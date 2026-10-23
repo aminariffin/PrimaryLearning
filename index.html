@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#4f46e5" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>PrimaryLearning — Math Saga KSSR (Darjah 1 Hingga Darjah 6)</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="./assets/icon.svg" />
+  <link rel="stylesheet" href="./assets/styles.css" />
+</head>
+<body>
+
+  <!-- ================= BAR NAVIGASI ATAS ================= -->
+  <header class="topbar">
+    <div class="brand" onclick="showView('viewProfiles')" style="cursor:pointer;">
+      <div class="brand-logo">123</div>
+      <div>
+        <div class="brand-title">MATH SAGA KSSR</div>
+        <div class="brand-sub">PrimaryLearning • Matematik Malaysia Darjah 1–6</div>
+      </div>
+    </div>
+
+    <div class="hud-pills">
+      <div class="hud-pill clickable" id="hudProfileName" onclick="showView('viewProfiles')" title="Tukar Profil Anak">
+        👤 Pilih Pemain
+      </div>
+      <div class="hud-pill" id="hudDarjah">Darjah 1 - 6</div>
+      <div class="hud-pill" id="hudStars">⭐ 0</div>
+      <div class="hud-pill clickable" id="hudSound" onclick="toggleSound()">🔊 Bunyi: ON</div>
+    </div>
+  </header>
+
+  <!-- ================= SKRIN 1: PENDAFTARAN & PILIHAN PROFIL ANAK ================= -->
+  <section id="viewProfiles" class="view-section active">
+    <div class="hero-banner">
+      <h1>🏰 Selamat Datang ke Math Saga KSSR!</h1>
+      <p>
+        Permainan Matematik serius bergaya <strong>Candy Crush Saga</strong> mengikut silibus <strong>KSSR (Semakan) Malaysia</strong>.<br />
+        Setiap anak bermula dari <strong>Darjah 1</strong> untuk mengukuhkan asas. Lulus <strong>Ujian Boss (≥80%)</strong> untuk naik ke Darjah seterusnya; jika belum lepas, kena cuba semula sehingga mahir!
+      </p>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+      <h2 style="margin:0; font-size:1.3rem;">👦👧 Pilih Profil Anak Untuk Bermain</h2>
+      <div style="display:flex; gap:8px;">
+        <button class="btn-3d slate" onclick="exportProgressJson()">💾 Simpan Sandaran (Backup)</button>
+        <label class="btn-3d slate" style="cursor:pointer;">
+          📂 Muat Naik Sandaran
+          <input type="file" accept=".json" style="display:none;" onchange="importProgressJson(event)" />
+        </label>
+      </div>
+    </div>
+
+    <div id="profilesGrid" class="profile-grid"></div>
+
+    <!-- Borang Daftar Anak Baharu -->
+    <div class="register-box">
+      <h3 style="margin:0 0 6px; font-size:1.2rem; color:#fde047;">➕ Daftar Profil Anak Baharu</h3>
+      <p style="margin:0; font-size:0.88rem; color:#cbd5e1;">
+        Rekod bintang, nyawa, dan tahap setiap anak disimpan secara automatik di dalam peranti ini.
+      </p>
+
+      <form onsubmit="handleRegisterChild(event)">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="inpFullName">Nama Penuh Anak *</label>
+            <input type="text" id="inpFullName" placeholder="Contoh: Muhammad Rayyan Hakimi" required />
+          </div>
+          <div class="form-group">
+            <label for="inpNickname">Nama Panggilan *</label>
+            <input type="text" id="inpNickname" placeholder="Contoh: Angah / Kak Long / Rayyan" required />
+          </div>
+          <div class="form-group">
+            <label for="inpAge">Umur Anak</label>
+            <select id="inpAge">
+              <option value="7">7 Tahun</option>
+              <option value="8">8 Tahun</option>
+              <option value="9">9 Tahun</option>
+              <option value="10" selected>10 Tahun (Darjah 4)</option>
+              <option value="11">11 Tahun</option>
+              <option value="12">12 Tahun (Darjah 6)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="inpActualDarjah">Darjah Sebenar di Sekolah</label>
+            <select id="inpActualDarjah">
+              <option value="1">Darjah 1</option>
+              <option value="2">Darjah 2</option>
+              <option value="3">Darjah 3</option>
+              <option value="4" selected>Darjah 4 (10 Tahun)</option>
+              <option value="5">Darjah 5</option>
+              <option value="6">Darjah 6 (12 Tahun)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top:14px;">
+          <label>Pilih Ikon Avatar Anak</label>
+          <div id="avatarPicker" class="avatar-picker"></div>
+        </div>
+
+        <div style="margin-top:18px; display:flex; justify-content:flex-end;">
+          <button type="submit" class="btn-3d green">
+            ✅ Daftar & Mula Dari Darjah 1
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ================= SKRIN 2: PETA SAGA (CANDY CRUSH LEVEL MAP) ================= -->
+  <section id="viewMap" class="view-section">
+    <div class="map-header-bar">
+      <div id="mapPlayerSummary"></div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn-3d slate" onclick="openParentReport()">📊 Laporan Ibu Bapa</button>
+        <button class="btn-3d slate" onclick="showView('viewProfiles')">🔄 Tukar Pemain</button>
+      </div>
+    </div>
+
+    <!-- Tab Pulau Darjah 1 hingga Darjah 6 -->
+    <div id="darjahTabs" class="darjah-tabs"></div>
+
+    <!-- Peta Berliku (Winding Path) -->
+    <div id="worldMapMount"></div>
+  </section>
+
+  <!-- ================= SKRIN 3: ARENA SOALAN & KERTAS CONTENG ================= -->
+  <section id="viewArena" class="view-section">
+    <div class="arena-topbar">
+      <div>
+        <div id="arenaTitle" style="font-weight:900; font-size:1.05rem;">Stesen 1.1</div>
+        <div id="arenaStepText" style="font-size:0.84rem; color:#94a3b8;">Soalan 1 / 8</div>
+      </div>
+
+      <div class="progress-track">
+        <div id="arenaProgressFill" class="progress-fill" style="width:0%;"></div>
+      </div>
+
+      <div id="arenaCombo" class="combo-badge" style="display:none;">🔥 Combo x2</div>
+
+      <div id="arenaHearts" class="hearts-box"></div>
+
+      <button class="btn-3d slate" style="padding:8px 14px; font-size:0.86rem;" onclick="returnToMapFromModal()">
+        🗺️ Keluar Peta
+      </button>
+    </div>
+
+    <!-- Bar Kuasa / Boosters ala Candy Crush -->
+    <div class="boosters-bar">
+      <button class="booster-btn" onclick="useBoosterHint()">
+        <span>💡 Petunjuk Cikgu</span>
+        <span class="booster-count" id="countHint">3</span>
+      </button>
+      <button class="booster-btn" onclick="useBoosterBomb()">
+        <span>💣 Bom 50/50</span>
+        <span class="booster-count" id="countBomb">3</span>
+      </button>
+      <button class="booster-btn" id="btnBoosterShield" onclick="useBoosterShield()">
+        <span>🛡️ Perisai Nyawa</span>
+        <span class="booster-count" id="countShield">2</span>
+      </button>
+    </div>
+
+    <div class="arena-grid">
+      <!-- Lajur Kiri: Kad Soalan + Input Jawapan -->
+      <div class="question-card">
+        <div>
+          <span id="qTopicPill" class="q-topic-pill">Topik KSSR</span>
+          <div id="qPromptText" class="q-prompt" style="margin-top:14px;">Soalan sedang dimuatkan...</div>
+          <div id="qHintBox" class="hint-box" style="margin-top:12px;"></div>
+        </div>
+
+        <!-- Pilihan Objektif (MCQ) -->
+        <div id="mcqMount" class="mcq-grid"></div>
+
+        <!-- Papan Kekunci Nombor Tablet (Numpad) -->
+        <div id="numpadMount" class="numpad-wrapper" style="display:none;">
+          <div class="numpad-display">
+            <span style="font-size:0.9rem; color:#94a3b8;">JAWAPAN:</span>
+            <span id="numpadValueText">Taip jawapan...</span>
+          </div>
+          <div class="numpad-grid">
+            <button type="button" class="num-key" onclick="pressNumpad('7')">7</button>
+            <button type="button" class="num-key" onclick="pressNumpad('8')">8</button>
+            <button type="button" class="num-key" onclick="pressNumpad('9')">9</button>
+            <button type="button" class="num-key" onclick="pressNumpad('4')">4</button>
+            <button type="button" class="num-key" onclick="pressNumpad('5')">5</button>
+            <button type="button" class="num-key" onclick="pressNumpad('6')">6</button>
+            <button type="button" class="num-key" onclick="pressNumpad('1')">1</button>
+            <button type="button" class="num-key" onclick="pressNumpad('2')">2</button>
+            <button type="button" class="num-key" onclick="pressNumpad('3')">3</button>
+            <button type="button" class="num-key" onclick="pressNumpad('.')">.</button>
+            <button type="button" class="num-key" onclick="pressNumpad('0')">0</button>
+            <button type="button" class="num-key" style="background:#7f1d1d;" onclick="pressNumpad('DEL')">⌫</button>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button type="button" class="btn-3d slate" style="flex:0.35;" onclick="pressNumpad('C')">Padam</button>
+            <button type="button" class="btn-3d green" style="flex:0.65; font-size:1.1rem;" onclick="submitNumpadAnswer()">
+              ✅ Hantar Jawapan
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lajur Kanan: Kertas Conteng (Bentuk Lazim) untuk Tab Android -->
+      <div class="scratchpad-card">
+        <div class="scratchpad-header">
+          <span>✏️ Kertas Conteng (Kira Bentuk Lazim)</span>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <button class="btn-3d gold" style="padding:5px 10px; font-size:0.75rem;" onclick="setPenColor('#fde047')">Kuning</button>
+            <button class="btn-3d green" style="padding:5px 10px; font-size:0.75rem;" onclick="setPenColor('#34d399')">Hijau</button>
+            <button class="btn-3d pink" style="padding:5px 10px; font-size:0.75rem;" onclick="setPenColor('#f472b6')">Merah</button>
+            <button class="btn-3d slate" style="padding:5px 10px; font-size:0.75rem;" onclick="clearScratchpad()">🗑️ Bersihkan</button>
+          </div>
+        </div>
+        <div class="scratch-canvas-wrap">
+          <canvas id="scratchCanvas"></canvas>
+        </div>
+        <div style="font-size:0.78rem; color:#94a3b8; text-align:center;">
+          Gunakan jari atau <em>stylus</em> pada skrin Tab Android untuk mengira bentuk lazim di atas petak ini.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SKRIN 4: LAPORAN IBU BAPA ================= -->
+  <section id="viewParent" class="view-section">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h2 style="margin:0;">📊 Rekod & Analisis Prestasi Anak</h2>
+      <button class="btn-3d gold" onclick="showView('viewMap')">⬅️ Kembali ke Peta</button>
+    </div>
+    <div id="parentReportMount"></div>
+  </section>
+
+  <!-- ================= MODAL MAKLUM BALAS SETIAP SOALAN ================= -->
+  <div id="feedbackModal" class="modal-overlay">
+    <div id="feedbackBox" class="modal-box">
+      <h2 id="feedbackTitle" style="margin:0;">Maklum Balas</h2>
+      <div id="feedbackExplanation" class="explanation-box"></div>
+      <button class="btn-3d gold" style="width:100%; font-size:1.1rem;" onclick="nextQuestionOrFinish()">
+        Teruskan ➡️
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= MODAL KEPUTUSAN STESEN / BOSS ================= -->
+  <div id="resultModal" class="modal-overlay">
+    <div id="resultBox" class="modal-box">
+      <div id="resultHeader"></div>
+      <div id="resultBody"></div>
+      <div style="display:flex; gap:12px; margin-top:18px;">
+        <button class="btn-3d gold" style="flex:1;" onclick="retryCurrentLevel()">
+          🔄 Cuba Semula (Soalan Baharu)
+        </button>
+        <button class="btn-3d green" style="flex:1;" onclick="returnToMapFromModal()">
+          🗺️ Ke Peta Saga
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./js/curriculum.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "name": "primary-learning-kssr",
+  "version": "1.0.0",
+  "description": "PrimaryLearning - Aplikasi Permainan Matematik KSSR (Darjah 1 hingga Darjah 6)",
+  "scripts": {
+    "start": "npx --yes http-server ./public -p 8080 -c-1 -o"
+  }
+}
