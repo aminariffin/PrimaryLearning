@@ -1,4 +1,4 @@
-const CACHE_NAME = 'primary-learning-kssr-v1';
+const CACHE_NAME = 'primary-learning-kssr-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -6,6 +6,8 @@ const ASSETS = [
   './assets/styles.css',
   './assets/icon.svg',
   './js/curriculum.js',
+  './js/science_curriculum.js',
+  './js/facts.js',
   './js/app.js'
 ];
 
@@ -25,8 +27,15 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// Network-first supaya kemas kini GitHub Pages terus kelihatan, fallback ke cache bila offline
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    fetch(event.request)
+      .then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        return res;
+      })
+      .catch(() => caches.match(event.request))
   );
 });

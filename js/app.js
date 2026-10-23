@@ -1,21 +1,23 @@
 // ============================================================================
-// MATH SAGA KSSR — LOGIK PERMAINAN, PROFIL ANAK, PETA CANDY CRUSH & AUDIO
+// PRIMARYLEARNING MALAYSIA (MATEMATIK & SAINS KSSR DARJAH 1–6 + TAHUKAH ANDA)
 // ============================================================================
 
 const STORAGE_KEY = 'MATH_SAGA_KSSR_STATE_V1';
-
 const AVATARS = ['🦁', '🐯', '🐼', '🦊', '🚀', '🦄', '🦖', '⚡', '👑', '🌟'];
 
 let appState = {
   soundEnabled: true,
   activeProfileId: null,
+  activeSubject: 'math', // 'math' | 'science'
   selectedAvatar: '🦁',
   selectedDarjahView: 1,
+  currentFactIndex: 0,
+  selectedFactCategory: 'SEMUA',
   profiles: []
 };
 
-// Sesi permainan semasa
 let gameSession = {
+  subject: 'math',
   nodeId: null,
   world: null,
   node: null,
@@ -30,7 +32,7 @@ let gameSession = {
   wrongTopics: []
 };
 
-// ================= AUDIO SYNTH (TANPA FAIL LUARAN) =================
+// ================= AUDIO SYNTH =================
 let audioCtx = null;
 function playTone(type) {
   if (!appState.soundEnabled) return;
@@ -77,9 +79,7 @@ function playTone(type) {
         osc.stop(now + idx * 0.09 + 0.36);
       });
     }
-  } catch (e) {
-    // Abaikan jika browser menyekat audio sebelum interaksi
-  }
+  } catch (e) {}
 }
 
 // ================= SIMPAN & MUAT DATA (LOCALSTORAGE) =================
@@ -89,6 +89,16 @@ function loadState() {
     if (raw) {
       const parsed = JSON.parse(raw);
       appState = { ...appState, ...parsed };
+      // Pastikan setiap profil menyokong kedua-dua subjek (migrasi automatik)
+      (appState.profiles || []).forEach((p) => {
+        if (!p.progress) p.progress = {};
+        if (!p.stats) p.stats = { totalAnswered: 0, totalCorrect: 0, topicStats: {} };
+        if (!p.boosters) p.boosters = { hint: 3, bomb: 3, shield: 2 };
+        if (!p.claimedFacts) p.claimedFacts = [];
+      });
+    }
+    if (!appState.activeProfileId && appState.profiles.length > 0) {
+      appState.activeProfileId = appState.profiles[0].id;
     }
   } catch (e) {
     console.error('Gagal memuatkan simpanan:', e);
@@ -105,13 +115,17 @@ function saveState() {
 }
 
 function getActiveProfile() {
-  return appState.profiles.find((p) => p.id === appState.activeProfileId) || null;
+  return appState.profiles.find((p) => p.id === appState.activeProfileId) || appState.profiles[0] || null;
 }
 
-// Senarai semua stesen mengikut urutan
-function getAllNodesOrdered() {
+function getWorldsForSubject(subject) {
+  return subject === 'science' ? window.SCIENCE_WORLDS : window.KSSR_WORLDS;
+}
+
+function getAllNodesForSubject(subject) {
+  const worlds = getWorldsForSubject(subject);
   const list = [];
-  window.KSSR_WORLDS.forEach((w) => {
+  worlds.forEach((w) => {
     w.nodes.forEach((n) => {
       list.push({ ...n, darjah: w.darjah });
     });
@@ -119,26 +133,35 @@ function getAllNodesOrdered() {
   return list;
 }
 
-function isNodeUnlocked(profile, nodeId) {
+function isNodeUnlocked(profile, nodeId, subject = appState.activeSubject) {
   if (!profile) return false;
-  const all = getAllNodesOrdered();
+  const all = getAllNodesForSubject(subject);
   const idx = all.findIndex((n) => n.id === nodeId);
-  if (idx <= 0) return true; // Stesen 1.1 sentiasa dibuka pada permulaan
+  if (idx <= 0) return true; // Stesen 1.1 sentiasa dibuka
   const prevNode = all[idx - 1];
   const prevRec = profile.progress[prevNode.id];
   return Boolean(prevRec && prevRec.passed);
 }
 
-function getHighestUnlockedDarjah(profile) {
+function getHighestUnlockedDarjah(profile, subject = appState.activeSubject) {
   if (!profile) return 1;
+  const worlds = getWorldsForSubject(subject);
   let highest = 1;
-  for (const w of window.KSSR_WORLDS) {
+  for (const w of worlds) {
     const firstNode = w.nodes[0];
-    if (isNodeUnlocked(profile, firstNode.id)) {
+    if (isNodeUnlocked(profile, firstNode.id, subject)) {
       highest = w.darjah;
     }
   }
   return highest;
+}
+
+function getSubjectStars(profile, subject) {
+  if (!profile || !profile.progress) return 0;
+  const prefix = subject === 'science' ? 's' : 'd';
+  return Object.entries(profile.progress)
+    .filter(([k]) => k.startsWith(prefix))
+    .reduce((sum, [, r]) => sum + (r.stars || 0), 0);
 }
 
 function getTotalStars(profile) {
@@ -151,21 +174,18 @@ function updateTopHud() {
   const p = getActiveProfile();
   const profileBadge = document.getElementById('hudProfileName');
   const starsBadge = document.getElementById('hudStars');
-  const darjahBadge = document.getElementById('hudDarjah');
   const soundBtn = document.getElementById('hudSound');
 
   if (soundBtn) {
-    soundBtn.textContent = appState.soundEnabled ? '🔊 Bunyi: ON' : '🔇 Bunyi: OFF';
+    soundBtn.textContent = appState.soundEnabled ? '🔊' : '🔇';
   }
 
   if (p) {
     profileBadge.innerHTML = `${p.avatar} <span>${escapeHtml(p.nickname)}</span>`;
-    starsBadge.textContent = `⭐ ${getTotalStars(p)} / 90`;
-    darjahBadge.textContent = `🔓 Tahap Semasa: Darjah ${getHighestUnlockedDarjah(p)}`;
+    starsBadge.textContent = `⭐ ${getTotalStars(p)} / 180`;
   } else {
-    profileBadge.innerHTML = `👤 Pilih Pemain`;
+    profileBadge.innerHTML = `👤 Daftar Pelajar`;
     starsBadge.textContent = `⭐ 0`;
-    darjahBadge.textContent = `Darjah 1 - 6`;
   }
 }
 
@@ -182,17 +202,50 @@ function formatPromptHtml(text) {
 }
 
 // ================= NAVIGASI ANTARA SKRIN =================
-function showView(viewId) {
+window.showView = function (viewId) {
   document.querySelectorAll('.view-section').forEach((el) => {
     el.classList.remove('active');
   });
   const target = document.getElementById(viewId);
   if (target) target.classList.add('active');
+
+  // Kemas kini butang tab aktif di bar atas
+  document.querySelectorAll('.nav-tab-btn').forEach((btn) => btn.classList.remove('active'));
+  if (viewId === 'viewProfiles') {
+    document.getElementById('navHome')?.classList.add('active');
+    renderProfilesView();
+  } else if (viewId === 'viewMap') {
+    if (appState.activeSubject === 'science') {
+      document.getElementById('navScience')?.classList.add('active');
+    } else {
+      document.getElementById('navMath')?.classList.add('active');
+    }
+  } else if (viewId === 'viewFacts') {
+    document.getElementById('navFacts')?.classList.add('active');
+    renderFactsView();
+  } else if (viewId === 'viewParent') {
+    document.getElementById('navParent')?.classList.add('active');
+  }
+
   window.scrollTo({ top: 0, behavior: 'smooth' });
   updateTopHud();
-}
+};
 
-// ================= SKRIN 1: PENDAFTARAN & PROFIL ANAK =================
+window.openSubjectFromNav = function (subject) {
+  const p = getActiveProfile();
+  if (!p) {
+    alert('Sila daftar atau pilih profil pelajar di Muka Depan terlebih dahulu!');
+    showView('viewProfiles');
+    return;
+  }
+  appState.activeSubject = subject;
+  appState.selectedDarjahView = getHighestUnlockedDarjah(p, subject);
+  saveState();
+  renderSagaMap();
+  showView('viewMap');
+};
+
+// ================= SKRIN 1: MUKA DEPAN (PILIH SUBJEK & DAFTAR PELAJAR) =================
 function renderAvatarPicker() {
   const container = document.getElementById('avatarPicker');
   if (!container) return;
@@ -207,18 +260,133 @@ window.selectAvatar = function (av) {
   renderAvatarPicker();
 };
 
+window.setActiveStudent = function (profileId) {
+  appState.activeProfileId = profileId;
+  saveState();
+  renderProfilesView();
+};
+
+window.launchSubjectForStudent = function (profileId, subject) {
+  if (profileId) appState.activeProfileId = profileId;
+  const p = getActiveProfile();
+  if (!p) {
+    alert('Sila daftarkan profil anak di bahagian bawah terlebih dahulu!');
+    document.getElementById('inpFullName')?.focus();
+    return;
+  }
+  appState.activeSubject = subject;
+  appState.selectedDarjahView = getHighestUnlockedDarjah(p, subject);
+  saveState();
+  renderSagaMap();
+  showView('viewMap');
+};
+
+window.spinFrontFact = function () {
+  const list = window.DID_YOU_KNOW_FACTS || [];
+  if (!list.length) return;
+  appState.currentFactIndex = (appState.currentFactIndex + 1) % list.length;
+  renderFrontFactSpotlight();
+};
+
+function renderFrontFactSpotlight() {
+  const mount = document.getElementById('frontFactSpotlight');
+  if (!mount || !window.DID_YOU_KNOW_FACTS) return;
+  const fact = window.DID_YOU_KNOW_FACTS[appState.currentFactIndex % window.DID_YOU_KNOW_FACTS.length];
+  mount.innerHTML = `
+    <div style="flex:1; min-width:250px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+        <span class="badge-chip" style="background:rgba(250,204,21,0.25); color:#fde047;">💡 TAHUKAH ANDA? • ${escapeHtml(fact.category)}</span>
+      </div>
+      <div style="font-weight:900; font-size:1.12rem; color:#fff; margin-bottom:4px;">
+        ${fact.icon} ${escapeHtml(fact.title)}
+      </div>
+      <div style="font-size:0.92rem; color:#e2e8f0; line-height:1.45;">
+        ${formatPromptHtml(fact.body)}
+      </div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <button class="btn-3d gold" onclick="spinFrontFact()">🎲 Fakta Lain</button>
+      <button class="btn-3d pink" onclick="showView('viewFacts')">📖 Buka Tab Tahukah Anda</button>
+    </div>
+  `;
+}
+
 function renderProfilesView() {
   renderAvatarPicker();
+  renderFrontFactSpotlight();
+
+  const p = getActiveProfile();
+  const subjectMount = document.getElementById('frontSubjectCards');
+  if (subjectMount) {
+    const mathDarjah = p ? getHighestUnlockedDarjah(p, 'math') : 1;
+    const sciDarjah = p ? getHighestUnlockedDarjah(p, 'science') : 1;
+    const mathStars = p ? getSubjectStars(p, 'math') : 0;
+    const sciStars = p ? getSubjectStars(p, 'science') : 0;
+
+    subjectMount.innerHTML = `
+      <div class="subject-card math-theme" onclick="launchSubjectForStudent('${p ? p.id : ''}', 'math')">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="subject-icon-big">🔢</span>
+            <span class="badge-chip" style="background:rgba(255,255,255,0.2); color:#fff;">Darjah 1 – Darjah 6</span>
+          </div>
+          <h3>Matematik KSSR</h3>
+          <p>Nombor Bulat, Sifir, Pecahan, Perpuluhan, Peratus, Wang, Masa, Ruang & UASA.</p>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:8px;">
+          <span style="font-weight:800; color:#fde047; font-size:0.9rem;">
+            ${p ? `🔓 Tahap ${escapeHtml(p.nickname)}: Darjah ${mathDarjah} • ⭐ ${mathStars}/90` : '6 Pulau • 30 Stesen Cabaran'}
+          </span>
+          <button class="btn-3d gold" style="padding:9px 16px;">▶️ Main Matematik</button>
+        </div>
+      </div>
+
+      <div class="subject-card science-theme" onclick="launchSubjectForStudent('${p ? p.id : ''}', 'science')">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="subject-icon-big">🔬</span>
+            <span class="badge-chip" style="background:rgba(255,255,255,0.2); color:#fff;">Darjah 1 – Darjah 6</span>
+          </div>
+          <h3>Sains KSSR</h3>
+          <p>Manusia, Haiwan, Tumbuhan, Cahaya, Elektrik, Daya, Kelajuan, Angkasa & UASA.</p>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:8px;">
+          <span style="font-weight:800; color:#a7f3d0; font-size:0.9rem;">
+            ${p ? `🔓 Tahap ${escapeHtml(p.nickname)}: Darjah ${sciDarjah} • ⭐ ${sciStars}/90` : '6 Pulau • 30 Stesen Cabaran'}
+          </span>
+          <button class="btn-3d gold" style="padding:9px 16px;">▶️ Main Sains</button>
+        </div>
+      </div>
+
+      <div class="subject-card facts-theme" onclick="showView('viewFacts')">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="subject-icon-big">💡</span>
+            <span class="badge-chip" style="background:rgba(255,255,255,0.2); color:#fff;">Bonus Kuiz & Fakta</span>
+          </div>
+          <h3>Sudut "Tahukah Anda?"</h3>
+          <p>Terokai fakta menakjubkan dunia Sains, Alam Malaysia, Angkasa & Rahsia Matematik!</p>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:8px;">
+          <span style="font-weight:800; color:#fef08a; font-size:0.9rem;">
+            🎁 Jawab Kuiz Fakta Dapat Booster!
+          </span>
+          <button class="btn-3d gold" style="padding:9px 16px;">📖 Terokai Fakta</button>
+        </div>
+      </div>
+    `;
+  }
+
   const grid = document.getElementById('profilesGrid');
   if (!grid) return;
 
   if (appState.profiles.length === 0) {
     grid.innerHTML = `
-      <div class="profile-card" style="grid-column: 1 / -1; text-align:center; padding: 28px;">
-        <div style="font-size: 2.6rem;">🎮</div>
-        <h3>Belum Ada Profil Anak Didaftarkan</h3>
+      <div class="profile-card" style="grid-column: 1 / -1; text-align:center; padding: 26px;">
+        <div style="font-size: 2.6rem;">👦👧</div>
+        <h3>Belum Ada Pelajar Didaftarkan</h3>
         <p style="color:#cbd5e1; margin:4px 0 0;">
-          Sila daftarkan Nama Penuh & Nama Panggilan anak anda (contoh: Anak 10 Tahun - Darjah 4 & Anak 12 Tahun - Darjah 6) di borang bawah untuk memulakan pengembaraan dari <strong>Darjah 1</strong>!
+          Sila daftarkan Nama Penuh & Nama Panggilan anak anda (contoh: Anak 10 Tahun - Darjah 4 & Anak 12 Tahun - Darjah 6) di borang bawah untuk mula memilih subjek <strong>Matematik</strong> atau <strong>Sains</strong>!
         </p>
       </div>
     `;
@@ -226,29 +394,40 @@ function renderProfilesView() {
   }
 
   grid.innerHTML = appState.profiles
-    .map((p) => {
-      const unlockedDarjah = getHighestUnlockedDarjah(p);
-      const stars = getTotalStars(p);
-      const completedNodes = Object.values(p.progress || {}).filter((x) => x.passed).length;
+    .map((prof) => {
+      const isSelected = p && p.id === prof.id;
+      const mathDarjah = getHighestUnlockedDarjah(prof, 'math');
+      const sciDarjah = getHighestUnlockedDarjah(prof, 'science');
+      const mathStars = getSubjectStars(prof, 'math');
+      const sciStars = getSubjectStars(prof, 'science');
+
       return `
-        <div class="profile-card">
+        <div class="profile-card ${isSelected ? 'active-student' : ''}" onclick="setActiveStudent('${prof.id}')">
           <div class="profile-header">
-            <div class="avatar-circle">${p.avatar}</div>
-            <div class="profile-meta">
-              <h3>${escapeHtml(p.nickname)}</h3>
-              <div class="fullname">${escapeHtml(p.fullName)}</div>
+            <div class="avatar-circle">${prof.avatar}</div>
+            <div class="profile-meta" style="flex:1;">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                <h3>${escapeHtml(prof.nickname)}</h3>
+                ${isSelected ? `<span class="badge-chip" style="background:#facc15; color:#1e1b4b;">PELAJAR AKTIF</span>` : ''}
+              </div>
+              <div class="fullname">${escapeHtml(prof.fullName)}</div>
             </div>
           </div>
+
           <div class="profile-badges">
-            <span class="badge-chip">🎂 ${p.age} Tahun (Sekolah: Darjah ${p.actualDarjah})</span>
-            <span class="badge-chip" style="background:rgba(16,185,129,0.2);color:#6ee7b7;">🔓 Peta: Darjah ${unlockedDarjah}</span>
-            <span class="badge-chip" style="background:rgba(250,204,21,0.2);color:#fde047;">⭐ ${stars} Bintang (${completedNodes}/30 Stesen)</span>
+            <span class="badge-chip">🎂 ${prof.age} Tahun (Darjah ${prof.actualDarjah})</span>
+            <span class="badge-chip" style="background:rgba(99,102,241,0.25);color:#c7d2fe;">🔢 Math: Darjah ${mathDarjah} (⭐${mathStars})</span>
+            <span class="badge-chip" style="background:rgba(16,185,129,0.25);color:#6ee7b7;">🔬 Sains: Darjah ${sciDarjah} (⭐${sciStars})</span>
           </div>
-          <div style="display:flex; gap:10px; margin-top:auto;">
-            <button class="btn-3d gold" style="flex:1;" onclick="selectProfileAndPlay('${p.id}')">
-              ▶️ Mula / Sambung Main
+
+          <div style="display:flex; gap:8px; margin-top:auto; flex-wrap:wrap;">
+            <button class="btn-3d" style="flex:1; padding:10px 12px; font-size:0.9rem;" onclick="event.stopPropagation(); launchSubjectForStudent('${prof.id}', 'math')">
+              🔢 Matematik
             </button>
-            <button class="btn-3d slate" onclick="openParentReport('${p.id}')" title="Rekod Prestasi">
+            <button class="btn-3d green" style="flex:1; padding:10px 12px; font-size:0.9rem;" onclick="event.stopPropagation(); launchSubjectForStudent('${prof.id}', 'science')">
+              🔬 Sains
+            </button>
+            <button class="btn-3d slate" style="padding:10px 12px;" onclick="event.stopPropagation(); openParentReport('${prof.id}')" title="Rekod Prestasi">
               📊
             </button>
           </div>
@@ -266,7 +445,7 @@ window.handleRegisterChild = function (event) {
   const actualDarjah = parseInt(document.getElementById('inpActualDarjah').value, 10) || 4;
 
   if (!fullName || !nickname) {
-    alert('Sila masukkan Nama Penuh dan Nama Panggilan anak.');
+    alert('Sila masukkan Nama Penuh dan Nama Panggilan pelajar.');
     return;
   }
 
@@ -283,6 +462,7 @@ window.handleRegisterChild = function (event) {
       bomb: 3,
       shield: 2
     },
+    claimedFacts: [],
     stats: {
       totalAnswered: 0,
       totalCorrect: 0,
@@ -300,22 +480,22 @@ window.handleRegisterChild = function (event) {
   document.getElementById('inpNickname').value = '';
 
   renderProfilesView();
-  selectProfileAndPlay(newProfile.id);
+  playTone('win');
 };
 
-window.selectProfileAndPlay = function (profileId) {
-  appState.activeProfileId = profileId;
-  const p = getActiveProfile();
-  appState.selectedDarjahView = getHighestUnlockedDarjah(p);
-  saveState();
-  renderSagaMap();
-  showView('viewMap');
-};
-
-// ================= SKRIN 2: PETA SAGA (CANDY CRUSH STYLE) =================
+// ================= SKRIN 2: PETA SAGA (MATEMATIK ATAU SAINS) =================
 window.selectDarjahTab = function (darjahNum) {
   appState.selectedDarjahView = darjahNum;
   renderSagaMap();
+};
+
+window.switchSubjectInMap = function (subject) {
+  const p = getActiveProfile();
+  appState.activeSubject = subject;
+  appState.selectedDarjahView = getHighestUnlockedDarjah(p, subject);
+  saveState();
+  renderSagaMap();
+  showView('viewMap');
 };
 
 function renderSagaMap() {
@@ -325,17 +505,21 @@ function renderSagaMap() {
     return;
   }
 
-  // Banner info pemain
-  const highestDarjah = getHighestUnlockedDarjah(p);
+  const subj = appState.activeSubject;
+  const subjTitle = subj === 'science' ? '🔬 SAINS KSSR' : '🔢 MATEMATIK KSSR';
+  const worlds = getWorldsForSubject(subj);
+  const highestDarjah = getHighestUnlockedDarjah(p, subj);
+
   document.getElementById('mapPlayerSummary').innerHTML = `
     <div style="display:flex; align-items:center; gap:12px;">
-      <div style="font-size:2.2rem;">${p.avatar}</div>
+      <div style="font-size:2.3rem;">${p.avatar}</div>
       <div>
         <div style="font-weight:900; font-size:1.15rem;">
-          ${escapeHtml(p.nickname)} <span style="color:#94a3b8; font-weight:600; font-size:0.9rem;">(${escapeHtml(p.fullName)} • ${p.age} Tahun / Sasaran Darjah ${p.actualDarjah})</span>
+          ${escapeHtml(p.nickname)} — <span style="color:#fde047;">${subjTitle}</span>
+          <span style="color:#94a3b8; font-weight:600; font-size:0.86rem;">(${escapeHtml(p.fullName)} • ${p.age} Tahun)</span>
         </div>
-        <div style="font-size:0.86rem; color:#fde047;">
-          Misi: Lulus semua stesen & Ujian Boss dari Darjah 1 hingga Darjah 6! (Tahap terbuka: Darjah ${highestDarjah})
+        <div style="font-size:0.86rem; color:#cbd5e1;">
+          Mula dari Darjah 1 • Lulus Ujian Boss (≥80%) untuk naik ke Darjah seterusnya! (Tahap Terbuka: <strong>Darjah ${highestDarjah}</strong>)
         </div>
       </div>
     </div>
@@ -343,26 +527,28 @@ function renderSagaMap() {
 
   // Tab pulau Darjah 1 - Darjah 6
   const tabsEl = document.getElementById('darjahTabs');
-  tabsEl.innerHTML = window.KSSR_WORLDS.map((w) => {
-    const firstNodeUnlocked = isNodeUnlocked(p, w.nodes[0].id);
-    const bossRec = p.progress[w.nodes[w.nodes.length - 1].id];
-    const isCompleted = Boolean(bossRec && bossRec.passed);
-    const isActive = appState.selectedDarjahView === w.darjah;
-    return `
-      <button class="darjah-tab ${isActive ? 'active' : ''} ${!firstNodeUnlocked ? 'locked' : ''}"
-              onclick="selectDarjahTab(${w.darjah})">
-        <span>${firstNodeUnlocked ? w.badge : '🔒'}</span>
-        <span>Darjah ${w.darjah}</span>
-        ${isCompleted ? '<span>✅</span>' : ''}
-      </button>
-    `;
-  }).join('');
+  tabsEl.innerHTML = worlds
+    .map((w) => {
+      const firstNodeUnlocked = isNodeUnlocked(p, w.nodes[0].id, subj);
+      const bossRec = p.progress[w.nodes[w.nodes.length - 1].id];
+      const isCompleted = Boolean(bossRec && bossRec.passed);
+      const isActive = appState.selectedDarjahView === w.darjah;
+      return `
+        <button class="darjah-tab ${isActive ? 'active' : ''} ${!firstNodeUnlocked ? 'locked' : ''}"
+                onclick="selectDarjahTab(${w.darjah})">
+          <span>${firstNodeUnlocked ? w.badge : '🔒'}</span>
+          <span>Darjah ${w.darjah}</span>
+          ${isCompleted ? '<span>✅</span>' : ''}
+        </button>
+      `;
+    })
+    .join('');
 
-  // Render Pulau Darjah yang dipilih
-  const world = window.KSSR_WORLDS.find((w) => w.darjah === appState.selectedDarjahView) || window.KSSR_WORLDS[0];
-  const allNodes = getAllNodesOrdered();
-  // Cari stesen pertama yang sudah dibuka tetapi belum lulus (sasaran semasa)
-  const currentTargetNode = allNodes.find((n) => isNodeUnlocked(p, n.id) && !(p.progress[n.id] && p.progress[n.id].passed));
+  const world = worlds.find((w) => w.darjah === appState.selectedDarjahView) || worlds[0];
+  const allNodes = getAllNodesForSubject(subj);
+  const currentTargetNode = allNodes.find(
+    (n) => isNodeUnlocked(p, n.id, subj) && !(p.progress[n.id] && p.progress[n.id].passed)
+  );
 
   const worldHtml = `
     <div class="world-container" style="background: ${world.bgGradient};">
@@ -375,7 +561,7 @@ function renderSagaMap() {
       <div class="saga-path">
         ${world.nodes
           .map((node) => {
-            const unlocked = isNodeUnlocked(p, node.id);
+            const unlocked = isNodeUnlocked(p, node.id, subj);
             const rec = p.progress[node.id] || { passed: false, stars: 0, bestScore: 0, attempts: 0 };
             const isTarget = currentTargetNode && currentTargetNode.id === node.id;
             const starsStr = rec.passed
@@ -386,7 +572,7 @@ function renderSagaMap() {
 
             return `
               <div class="saga-step ${unlocked ? 'unlocked' : 'locked'} ${rec.passed ? 'completed' : ''} ${node.isBoss ? 'boss' : ''} ${isTarget ? 'current-target' : ''}"
-                   onclick="${unlocked ? `startLevel('${node.id}')` : `lockedNotice(${world.darjah})`}">
+                   onclick="${unlocked ? `startLevel('${node.id}')` : `lockedNotice()`}">
                 <div class="node-orb">
                   <span>${node.isBoss ? '👑' : node.code}</span>
                   <div class="node-stars">${starsStr}</div>
@@ -425,24 +611,34 @@ function renderSagaMap() {
   document.getElementById('worldMapMount').innerHTML = worldHtml;
 }
 
-window.lockedNotice = function (darjah) {
+window.lockedNotice = function () {
   playTone('wrong');
-  alert(`Stesen ini masih terkunci! Anak perlu lulus stesen sebelumnya (dan Ujian Boss Darjah) dengan markah sekurang-kurangnya 75%-80% dahulu.`);
+  alert('Stesen ini masih terkunci! Sila lulus stesen sebelumnya (dan Ujian Boss Darjah) dahulu.');
 };
 
-// ================= SKRIN 3: ARENA PERMAINAN & KERTAS CONTENG =================
+// ================= SKRIN 3: ARENA PERMAINAN =================
 window.startLevel = function (nodeId) {
   const p = getActiveProfile();
   if (!p) return;
 
-  const world = window.KSSR_WORLDS.find((w) => w.nodes.some((n) => n.id === nodeId));
+  const isSci = nodeId.startsWith('s');
+  const subj = isSci ? 'science' : 'math';
+  appState.activeSubject = subj;
+
+  const worlds = getWorldsForSubject(subj);
+  const world = worlds.find((w) => w.nodes.some((n) => n.id === nodeId));
   const node = world.nodes.find((n) => n.id === nodeId);
 
+  const questions = isSci
+    ? window.generateScienceQuestionsForNode(nodeId)
+    : window.generateQuestionsForNode(nodeId);
+
   gameSession = {
+    subject: subj,
     nodeId,
     world,
     node,
-    questions: window.generateQuestionsForNode(nodeId),
+    questions,
     currentIndex: 0,
     hearts: 3,
     maxHearts: 3,
@@ -463,14 +659,12 @@ function renderCurrentQuestion() {
   const q = gameSession.questions[gameSession.currentIndex];
   const totalQ = gameSession.questions.length;
 
-  // Kemas kini bar atas Arena
   document.getElementById('arenaTitle').textContent = `${gameSession.node.code} — ${gameSession.node.title}`;
   document.getElementById('arenaStepText').textContent = `Soalan ${gameSession.currentIndex + 1} / ${totalQ}`;
 
   const pct = Math.round((gameSession.currentIndex / totalQ) * 100);
   document.getElementById('arenaProgressFill').style.width = `${pct}%`;
 
-  // Hati / Nyawa
   let heartsHtml = '';
   for (let i = 1; i <= gameSession.maxHearts; i++) {
     const alive = i <= gameSession.hearts;
@@ -481,7 +675,6 @@ function renderCurrentQuestion() {
   }
   document.getElementById('arenaHearts').innerHTML = heartsHtml;
 
-  // Combo Streak
   const comboEl = document.getElementById('arenaCombo');
   if (gameSession.streak >= 2) {
     comboEl.style.display = 'inline-block';
@@ -490,13 +683,11 @@ function renderCurrentQuestion() {
     comboEl.style.display = 'none';
   }
 
-  // Kemas kini butang Booster
   document.getElementById('countHint').textContent = p.boosters.hint;
   document.getElementById('countBomb').textContent = p.boosters.bomb;
   document.getElementById('countShield').textContent = p.boosters.shield;
   document.getElementById('btnBoosterShield').disabled = p.boosters.shield <= 0 || gameSession.shieldActive;
 
-  // Kandungan Soalan
   document.getElementById('qTopicPill').textContent = q.topic;
   document.getElementById('qPromptText').innerHTML = formatPromptHtml(q.prompt);
 
@@ -504,7 +695,6 @@ function renderCurrentQuestion() {
   hintBox.style.display = 'none';
   hintBox.textContent = `💡 Petunjuk Cikgu: ${q.hint}`;
 
-  // Mod Input (MCQ atau Numpad Skrin Sentuh)
   const mcqArea = document.getElementById('mcqMount');
   const numpadArea = document.getElementById('numpadMount');
 
@@ -519,7 +709,7 @@ function renderCurrentQuestion() {
     mcqArea.innerHTML = q.options
       .map(
         (opt, idx) => `
-        <button class="mcq-btn" id="mcqOpt_${idx}" onclick="submitAnswer('${escapeHtml(opt).replace(/'/g, "\\'")}')">
+        <button class="mcq-btn" id="mcqOpt_${idx}" onclick="submitAnswer(${idx}, true)">
           ${escapeHtml(opt)}
         </button>
       `
@@ -553,10 +743,10 @@ window.pressNumpad = function (key) {
 
 window.submitNumpadAnswer = function () {
   if (!gameSession.numpadValue) return;
-  submitAnswer(gameSession.numpadValue);
+  submitAnswer(gameSession.numpadValue, false);
 };
 
-// ================= BOOSTERS (KUASA CANDY CRUSH) =================
+// ================= BOOSTERS =================
 window.useBoosterHint = function () {
   const p = getActiveProfile();
   const hintBox = document.getElementById('qHintBox');
@@ -573,7 +763,7 @@ window.useBoosterBomb = function () {
   const p = getActiveProfile();
   const q = gameSession.questions[gameSession.currentIndex];
   if (p.boosters.bomb <= 0) {
-    alert('Bom 50/50 sudah habis! Dapatkan 3 Bintang pada mana-mana stesen untuk menerima hadiah Booster baharu.');
+    alert('Bom 50/50 sudah habis! Dapatkan 3 Bintang atau jawab Kuiz di tab "Tahukah Anda?" untuk dapatkan Booster baharu.');
     return;
   }
   p.boosters.bomb--;
@@ -581,13 +771,11 @@ window.useBoosterBomb = function () {
   document.getElementById('countBomb').textContent = p.boosters.bomb;
 
   if (q.inputMode === 'numpad') {
-    // Tukarkan terus soalan numpad kepada pilihan objektif 2 pilihan!
     q.inputMode = 'mcq';
     const wrongOpt = q.options.find((o) => String(o) !== String(q.answer)) || '0';
     q.options = [String(q.answer), String(wrongOpt)].sort(() => Math.random() - 0.5);
     renderCurrentQuestion();
   } else {
-    // Buang 2 pilihan salah
     let removed = 0;
     q.options.forEach((opt, idx) => {
       if (String(opt) !== String(q.answer) && removed < 2) {
@@ -610,10 +798,11 @@ window.useBoosterShield = function () {
   renderCurrentQuestion();
 };
 
-// ================= SEMAK JAWAPAN & LANGKAH PENYELESAIAN =================
-window.submitAnswer = function (givenRaw) {
+// ================= SEMAK JAWAPAN =================
+window.submitAnswer = function (valOrIdx, isIndex = false) {
   const p = getActiveProfile();
   const q = gameSession.questions[gameSession.currentIndex];
+  const givenRaw = isIndex ? q.options[valOrIdx] : valOrIdx;
 
   const cleanGiven = String(givenRaw).replace(/,/g, '').trim().toLowerCase();
   const cleanAns = String(q.answer).replace(/,/g, '').trim().toLowerCase();
@@ -622,7 +811,6 @@ window.submitAnswer = function (givenRaw) {
     cleanGiven === cleanAns ||
     (!isNaN(Number(cleanGiven)) && !isNaN(Number(cleanAns)) && Math.abs(Number(cleanGiven) - Number(cleanAns)) < 0.0001);
 
-  // Kemas kini statistik topik anak
   p.stats.totalAnswered = (p.stats.totalAnswered || 0) + 1;
   if (!p.stats.topicStats[q.topic]) {
     p.stats.topicStats[q.topic] = { asked: 0, correct: 0 };
@@ -641,7 +829,6 @@ window.submitAnswer = function (givenRaw) {
     p.stats.totalCorrect = (p.stats.totalCorrect || 0) + 1;
     p.stats.topicStats[q.topic].correct++;
 
-    // Ganjaran booster bila streak 4 berturut-turut
     let bonusMsg = '';
     if (gameSession.streak > 0 && gameSession.streak % 4 === 0) {
       p.boosters.hint++;
@@ -666,7 +853,7 @@ window.submitAnswer = function (givenRaw) {
       title.innerHTML = `❌ Kurang Tepat! (-1 Hati ❤️)`;
     }
 
-    exp.innerHTML = `Jawapan anda: <strong>${escapeHtml(givenRaw)}</strong>\nJawapan sebenar: <strong>${escapeHtml(q.answer)}</strong>\n\n<strong>📚 Langkah Kira Cikgu:</strong>\n${formatPromptHtml(q.explanation)}`;
+    exp.innerHTML = `Jawapan anda: <strong>${escapeHtml(givenRaw)}</strong>\nJawapan sebenar: <strong>${escapeHtml(q.answer)}</strong>\n\n<strong>📚 Penerangan Cikgu:</strong>\n${formatPromptHtml(q.explanation)}`;
   }
 
   saveState();
@@ -676,7 +863,6 @@ window.submitAnswer = function (givenRaw) {
 window.nextQuestionOrFinish = function () {
   document.getElementById('feedbackModal').classList.remove('show');
 
-  // Semak jika nyawa (hati) habis
   if (gameSession.hearts <= 0) {
     finishLevel(false, 'Habis 3 Nyawa (Hati ❤️)');
     return;
@@ -686,7 +872,12 @@ window.nextQuestionOrFinish = function () {
   if (gameSession.currentIndex >= gameSession.questions.length) {
     const scorePct = Math.round((gameSession.correctCount / gameSession.questions.length) * 100);
     const passed = scorePct >= gameSession.node.passPercent;
-    finishLevel(passed, passed ? 'Berjaya Melepasi Markah Lulus!' : `Markah ${scorePct}% belum mencapai syarat lulus (${gameSession.node.passPercent}%).`);
+    finishLevel(
+      passed,
+      passed
+        ? 'Berjaya Melepasi Markah Lulus!'
+        : `Markah ${scorePct}% belum mencapai syarat lulus (${gameSession.node.passPercent}%).`
+    );
   } else {
     clearScratchpad();
     renderCurrentQuestion();
@@ -713,12 +904,11 @@ function finishLevel(passed, reasonText) {
     attempts: (prev.attempts || 0) + 1
   };
 
-  // Jika dapat 3 bintang buat kali pertama, beri hadiah booster
   let rewardText = '';
   if (stars === 3 && prev.stars < 3) {
     p.boosters.bomb++;
     p.boosters.shield++;
-    rewardText = `🎁 Ganjaran 3 Bintang: +1 Bom 50/50 & +1 Perisai Hati!`;
+    rewardText = `🎁 Ganjaran 3 Bintang: +1 Bom 50/50 & +1 Perisai Nyawa!`;
   }
 
   saveState();
@@ -800,7 +990,132 @@ window.returnToMapFromModal = function () {
   showView('viewMap');
 };
 
-// ================= KERTAS CONTENG (SCRATCHPAD CANVAS TABLET) =================
+// ================= SKRIN 4: SUDUT "TAHUKAH ANDA?" (FAKTA RAWAK & KUIZ BONUS) =================
+function getFilteredFacts() {
+  const all = window.DID_YOU_KNOW_FACTS || [];
+  if (appState.selectedFactCategory === 'SEMUA') return all;
+  return all.filter((f) => f.category === appState.selectedFactCategory);
+}
+
+window.selectFactCategory = function (cat) {
+  appState.selectedFactCategory = cat;
+  appState.currentFactIndex = 0;
+  renderFactsView();
+};
+
+window.nextRandomFact = function () {
+  const list = getFilteredFacts();
+  if (list.length <= 1) return;
+  let nextIdx = Math.floor(Math.random() * list.length);
+  if (nextIdx === appState.currentFactIndex % list.length) {
+    nextIdx = (nextIdx + 1) % list.length;
+  }
+  appState.currentFactIndex = nextIdx;
+  playTone('correct');
+  renderFactsView();
+};
+
+window.answerFactMiniQuiz = function (factId, chosenIdx) {
+  const fact = (window.DID_YOU_KNOW_FACTS || []).find((f) => f.id === factId);
+  if (!fact) return;
+  const chosen = fact.options[chosenIdx];
+  const msgEl = document.getElementById('factQuizFeedback');
+  const p = getActiveProfile();
+
+  if (chosen === fact.answer) {
+    playTone('win');
+    let rewardNotice = '✅ Tepat sekali! Hebat ingatan anda!';
+    if (p) {
+      if (!p.claimedFacts) p.claimedFacts = [];
+      if (!p.claimedFacts.includes(factId)) {
+        p.claimedFacts.push(factId);
+        p.boosters.hint = (p.boosters.hint || 0) + 1;
+        saveState();
+        rewardNotice = `🎉 Betul! ${escapeHtml(p.nickname)} menerima hadiah +1 💡 Petunjuk Cikgu untuk digunakan dalam permainan!`;
+      }
+    }
+    msgEl.style.display = 'block';
+    msgEl.style.color = '#6ee7b7';
+    msgEl.textContent = rewardNotice;
+  } else {
+    playTone('wrong');
+    msgEl.style.display = 'block';
+    msgEl.style.color = '#fca5a5';
+    msgEl.textContent = '❌ Cuba baca semula petikan fakta di atas dan pilih sekali lagi!';
+  }
+};
+
+function renderFactsView() {
+  const all = window.DID_YOU_KNOW_FACTS || [];
+  const categories = ['SEMUA', ...new Set(all.map((f) => f.category))];
+  const catMount = document.getElementById('factCategoriesBar');
+  if (catMount) {
+    catMount.innerHTML = categories
+      .map(
+        (c) => `
+        <button class="darjah-tab ${appState.selectedFactCategory === c ? 'active' : ''}"
+                onclick="selectFactCategory('${escapeHtml(c).replace(/'/g, "\\'")}')">
+          ${escapeHtml(c)}
+        </button>
+      `
+      )
+      .join('');
+  }
+
+  const list = getFilteredFacts();
+  const fact = list[appState.currentFactIndex % list.length] || all[0];
+  const p = getActiveProfile();
+  const alreadyClaimed = p && p.claimedFacts && p.claimedFacts.includes(fact.id);
+
+  const mount = document.getElementById('factMainMount');
+  if (!mount || !fact) return;
+
+  mount.innerHTML = `
+    <div class="fact-hero-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <span class="badge-chip" style="background:rgba(250,204,21,0.22); color:#fde047; font-size:0.9rem; padding:6px 14px;">
+          ${escapeHtml(fact.category)}
+        </span>
+        <button class="btn-3d gold" onclick="nextRandomFact()">
+          🎲 Fakta Rawak Seterusnya!
+        </button>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:16px; margin-top:18px;">
+        <div style="font-size:3.5rem;">${fact.icon}</div>
+        <h2 style="margin:0; font-size:1.55rem; color:#fde047;">${escapeHtml(fact.title)}</h2>
+      </div>
+
+      <div class="fact-body-text">${formatPromptHtml(fact.body)}</div>
+
+      <div class="fact-quiz-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+          <strong style="color:#a5b4fc;">🧠 Uji Minda Fakta Ini:</strong>
+          <span class="badge-chip" style="background:rgba(16,185,129,0.2); color:#6ee7b7;">
+            ${alreadyClaimed ? '✅ Bonus Telah Ditebus' : '🎁 Ganjaran: +1 💡 Petunjuk Cikgu'}
+          </span>
+        </div>
+        <div style="font-weight:700; font-size:1.05rem; margin-bottom:12px;">
+          ${escapeHtml(fact.funQuestion)}
+        </div>
+        <div class="mcq-grid">
+          ${fact.options
+            .map(
+              (opt, idx) => `
+              <button class="mcq-btn" onclick="answerFactMiniQuiz('${fact.id}', ${idx})">
+                ${escapeHtml(opt)}
+              </button>
+            `
+            )
+            .join('')}
+        </div>
+        <div id="factQuizFeedback" style="display:none; margin-top:12px; font-weight:800; font-size:1rem;"></div>
+      </div>
+    </div>
+  `;
+}
+
+// ================= KERTAS CONTENG (SCRATCHPAD CANVAS) =================
 let scratchCtx = null;
 let isDrawing = false;
 let penColor = '#fde047';
@@ -854,18 +1169,23 @@ window.clearScratchpad = function () {
   scratchCtx.clearRect(0, 0, canvas.width, canvas.height);
 };
 
-// ================= SKRIN 4: REKOD PRESTASI IBU BAPA =================
+// ================= SKRIN 5: LAPORAN IBU BAPA =================
 window.openParentReport = function (profileId) {
   if (profileId) appState.activeProfileId = profileId;
   const p = getActiveProfile() || appState.profiles[0];
   if (!p) {
-    alert('Tiada profil anak lagi. Sila daftar profil anak terlebih dahulu.');
+    alert('Tiada profil pelajar lagi. Sila daftar profil pelajar di Muka Depan terlebih dahulu.');
     return;
   }
 
   const totalAns = p.stats.totalAnswered || 0;
   const totalCor = p.stats.totalCorrect || 0;
   const acc = totalAns > 0 ? Math.round((totalCor / totalAns) * 100) : 0;
+
+  const mathDarjah = getHighestUnlockedDarjah(p, 'math');
+  const sciDarjah = getHighestUnlockedDarjah(p, 'science');
+  const mathStars = getSubjectStars(p, 'math');
+  const sciStars = getSubjectStars(p, 'science');
 
   const topics = Object.entries(p.stats.topicStats || {});
   const topicRows =
@@ -896,9 +1216,12 @@ window.openParentReport = function (profileId) {
             <div style="color:#94a3b8;">Umur: ${p.age} Tahun • Darjah Sebenar di Sekolah: Darjah ${p.actualDarjah}</div>
           </div>
         </div>
-        <div>
-          <span class="badge-chip" style="font-size:0.95rem; padding:8px 14px;">
-            Tahap Semasa: Darjah ${getHighestUnlockedDarjah(p)} • ⭐ ${getTotalStars(p)} Bintang
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <span class="badge-chip" style="font-size:0.9rem; padding:8px 14px;">
+            🔢 Matematik: Darjah ${mathDarjah} (⭐ ${mathStars}/90)
+          </span>
+          <span class="badge-chip" style="font-size:0.9rem; padding:8px 14px; background:rgba(16,185,129,0.2); color:#6ee7b7;">
+            🔬 Sains: Darjah ${sciDarjah} (⭐ ${sciStars}/90)
           </span>
         </div>
       </div>
@@ -913,14 +1236,14 @@ window.openParentReport = function (profileId) {
           <div style="font-size:1.5rem; font-weight:900; color:#fde047;">${acc}%</div>
         </div>
         <div style="background:#0f172a; padding:14px; border-radius:14px;">
-          <div style="color:#94a3b8; font-size:0.82rem;">Stesen Lulus</div>
+          <div style="color:#94a3b8; font-size:0.82rem;">Jumlah Stesen Lulus (Math + Sains)</div>
           <div style="font-size:1.5rem; font-weight:900; color:#34d399;">
-            ${Object.values(p.progress || {}).filter((x) => x.passed).length} / 30
+            ${Object.values(p.progress || {}).filter((x) => x.passed).length} / 60
           </div>
         </div>
       </div>
 
-      <h3 style="margin:18px 0 6px;">Analisis Mengikut Topik KSSR</h3>
+      <h3 style="margin:18px 0 6px;">Analisis Mengikut Topik KSSR (Matematik & Sains)</h3>
       <div style="overflow-x:auto;">
         <table class="report-table">
           <thead>
@@ -946,7 +1269,7 @@ window.exportProgressJson = function () {
   const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(appState, null, 2));
   const a = document.createElement('a');
   a.setAttribute('href', dataStr);
-  a.setAttribute('download', `math-saga-kssr-backup-${new Date().toISOString().slice(0, 10)}.json`);
+  a.setAttribute('download', `primary-learning-kssr-backup-${new Date().toISOString().slice(0, 10)}.json`);
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -960,7 +1283,7 @@ window.importProgressJson = function (event) {
     try {
       const parsed = JSON.parse(e.target.result);
       if (parsed && Array.isArray(parsed.profiles)) {
-        appState = parsed;
+        appState = { ...appState, ...parsed };
         saveState();
         renderProfilesView();
         alert('Rekod progres anak berjaya dimuat naik!');
@@ -979,7 +1302,6 @@ window.toggleSound = function () {
   saveState();
 };
 
-// ================= INISIALISASI APLIKASI =================
 window.addEventListener('DOMContentLoaded', () => {
   loadState();
   renderProfilesView();

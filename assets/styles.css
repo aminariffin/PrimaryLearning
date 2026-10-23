@@ -42,10 +42,11 @@ html, body {
   justify-content: space-between;
   gap: 12px;
   padding: 12px 20px;
-  background: rgba(15, 23, 42, 0.92);
+  background: rgba(15, 23, 42, 0.94);
   backdrop-filter: blur(14px);
   border-bottom: 2px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+  flex-wrap: wrap;
 }
 
 .brand {
@@ -55,9 +56,9 @@ html, body {
 }
 
 .brand-logo {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
   background: linear-gradient(135deg, #f59e0b, #ec4899, #6366f1);
   display: flex;
   align-items: center;
@@ -68,10 +69,10 @@ html, body {
 }
 
 .brand-title {
-  font-size: 1.15rem;
+  font-size: 1.18rem;
   font-weight: 900;
   letter-spacing: 0.3px;
-  background: linear-gradient(90deg, #fde047, #f472b6, #818cf8);
+  background: linear-gradient(90deg, #fde047, #f472b6, #38bdf8);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -81,23 +82,57 @@ html, body {
   color: var(--text-muted);
 }
 
+.nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.nav-tab-btn {
+  border: 1.5px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.07);
+  color: #e2e8f0;
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 0.88rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+}
+
+.nav-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: #fde047;
+}
+
+.nav-tab-btn.active {
+  background: linear-gradient(135deg, #6366f1, #ec4899);
+  color: #fff;
+  border-color: #fff;
+  box-shadow: 0 4px 12px rgba(236, 72, 153, 0.35);
+}
+
 .hud-pills {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .hud-pill {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   background: rgba(255, 255, 255, 0.08);
   border: 1.5px solid rgba(255, 255, 255, 0.14);
-  padding: 7px 14px;
+  padding: 7px 13px;
   border-radius: 999px;
   font-weight: 800;
-  font-size: 0.92rem;
+  font-size: 0.88rem;
 }
 
 .hud-pill.clickable {
@@ -115,8 +150,8 @@ html, body {
   cursor: pointer;
   font-family: inherit;
   font-weight: 800;
-  font-size: 1rem;
-  padding: 13px 22px;
+  font-size: 0.96rem;
+  padding: 12px 20px;
   border-radius: 16px;
   color: #fff;
   background: linear-gradient(180deg, #6366f1 0%, #4f46e5 100%);
@@ -156,6 +191,15 @@ html, body {
   box-shadow: 0 2px 0 #065f46;
 }
 
+.btn-3d.cyan {
+  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+  box-shadow: 0 6px 0 #075985, 0 10px 20px rgba(0, 0, 0, 0.35);
+}
+
+.btn-3d.cyan:active {
+  box-shadow: 0 2px 0 #075985;
+}
+
 .btn-3d.pink {
   background: linear-gradient(180deg, #f472b6 0%, #db2777 100%);
   box-shadow: 0 6px 0 #831843, 0 10px 20px rgba(0, 0, 0, 0.35);
@@ -177,7 +221,7 @@ html, body {
 /* ================= VIEWS & CONTAINERS ================= */
 .view-section {
   display: none;
-  max-width: 1120px;
+  max-width: 1140px;
   margin: 0 auto;
   padding: 20px 16px 70px;
 }
@@ -192,38 +236,114 @@ html, body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ================= PROFILE REGISTRATION & SELECTOR ================= */
+/* ================= FRONT PAGE: SUBJECT CARDS & PROFILES ================= */
 .hero-banner {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(236, 72, 153, 0.22));
-  border: 2px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.28), rgba(236, 72, 153, 0.24), rgba(16, 185, 129, 0.2));
+  border: 2px solid rgba(255, 255, 255, 0.16);
   border-radius: var(--radius-xl);
-  padding: 24px;
-  margin-bottom: 24px;
-  text-align: center;
+  padding: 22px 24px;
+  margin-bottom: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
 }
 
 .hero-banner h1 {
-  margin: 0 0 8px;
-  font-size: 1.75rem;
+  margin: 0 0 6px;
+  font-size: 1.65rem;
 }
 
 .hero-banner p {
   margin: 0;
   color: #cbd5e1;
-  font-size: 0.98rem;
-  line-height: 1.5;
+  font-size: 0.95rem;
+  line-height: 1.45;
 }
 
+/* Subject Cards on Front Page */
+.subject-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 18px;
+  margin-bottom: 26px;
+}
+
+.subject-card {
+  border-radius: 26px;
+  padding: 24px;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.18s, border-color 0.18s;
+}
+
+.subject-card:hover {
+  transform: translateY(-4px);
+  border-color: #fde047;
+}
+
+.subject-card.math-theme {
+  background: linear-gradient(135deg, #312e81 0%, #4f46e5 55%, #7c3aed 100%);
+}
+
+.subject-card.science-theme {
+  background: linear-gradient(135deg, #064e3b 0%, #059669 55%, #0284c7 100%);
+}
+
+.subject-card.facts-theme {
+  background: linear-gradient(135deg, #78350f 0%, #d97706 55%, #db2777 100%);
+}
+
+.subject-icon-big {
+  font-size: 3.1rem;
+  line-height: 1;
+}
+
+.subject-card h3 {
+  margin: 6px 0 4px;
+  font-size: 1.4rem;
+}
+
+.subject-card p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.4;
+}
+
+/* Mini Did You Know Spotlight on Front Page */
+.fact-spotlight {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(236, 72, 153, 0.18));
+  border: 2px solid rgba(250, 204, 21, 0.45);
+  border-radius: 22px;
+  padding: 18px 22px;
+  margin-bottom: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* Profile Cards */
 .profile-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 18px;
   margin-bottom: 26px;
 }
 
 .profile-card {
   background: var(--bg-card);
-  border: 2px solid rgba(255, 255, 255, 0.12);
+  border: 2.5px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-xl);
   padding: 20px;
   display: flex;
@@ -233,9 +353,9 @@ html, body {
   position: relative;
 }
 
-.profile-card:hover {
-  border-color: #818cf8;
-  transform: translateY(-3px);
+.profile-card.active-student {
+  border-color: #fde047;
+  box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.25), 0 12px 28px rgba(0, 0, 0, 0.45);
 }
 
 .profile-header {
@@ -351,7 +471,7 @@ html, body {
   flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 18px;
-  background: rgba(30, 41, 59, 0.85);
+  background: rgba(30, 41, 59, 0.88);
   padding: 16px 20px;
   border-radius: var(--radius-lg);
   border: 1.5px solid rgba(255, 255, 255, 0.12);
@@ -419,7 +539,6 @@ html, body {
   color: rgba(255, 255, 255, 0.88);
 }
 
-/* Winding Path Nodes */
 .saga-path {
   display: flex;
   flex-direction: column;
@@ -488,7 +607,7 @@ html, body {
   align-items: center;
   justify-content: center;
   font-weight: 900;
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   color: #fff;
   background: radial-gradient(circle at 30% 30%, #fbbf24, #d97706);
   border: 4px solid #fff;
@@ -514,9 +633,9 @@ html, body {
 }
 
 .node-stars {
-  font-size: 1.05rem;
-  letter-spacing: 2px;
-  margin-top: 4px;
+  font-size: 1rem;
+  letter-spacing: 1px;
+  margin-top: 3px;
 }
 
 .node-info {
@@ -535,7 +654,7 @@ html, body {
   line-height: 1.35;
 }
 
-/* ================= GAMEPLAY ARENA (TABLET DUAL-COLUMN) ================= */
+/* ================= GAMEPLAY ARENA ================= */
 .arena-topbar {
   display: flex;
   align-items: center;
@@ -592,7 +711,6 @@ html, body {
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
-/* Power-ups bar */
 .boosters-bar {
   display: flex;
   gap: 10px;
@@ -637,7 +755,6 @@ html, body {
   font-size: 0.8rem;
 }
 
-/* Main Arena Grid: Question + Interactive Numpad / Scratchpad */
 .arena-grid {
   display: grid;
   grid-template-columns: 1.15fr 0.85fr;
@@ -680,7 +797,7 @@ html, body {
 }
 
 .q-prompt {
-  font-size: 1.38rem;
+  font-size: 1.32rem;
   line-height: 1.5;
   font-weight: 700;
   white-space: pre-line;
@@ -701,7 +818,6 @@ html, body {
   display: none;
 }
 
-/* Multiple Choice Grid */
 .mcq-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -715,17 +831,18 @@ html, body {
 }
 
 .mcq-btn {
-  padding: 18px 16px;
+  padding: 16px 14px;
   border-radius: 16px;
   border: 2px solid rgba(255, 255, 255, 0.18);
   background: rgba(15, 23, 42, 0.85);
   color: #fff;
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 800;
   cursor: pointer;
   box-shadow: 0 5px 0 rgba(0, 0, 0, 0.4);
   transition: transform 0.1s, border-color 0.15s, background 0.15s;
   text-align: center;
+  line-height: 1.35;
 }
 
 .mcq-btn:hover:not(:disabled) {
@@ -743,7 +860,6 @@ html, body {
   text-decoration: line-through;
 }
 
-/* Built-in Tablet Numpad */
 .numpad-wrapper {
   display: flex;
   flex-direction: column;
@@ -788,7 +904,6 @@ html, body {
   background: #312e81;
 }
 
-/* Scratchpad / Kertas Conteng Bentuk Lazim */
 .scratchpad-card {
   background: var(--bg-card);
   border: 2.5px solid rgba(255, 255, 255, 0.14);
@@ -831,7 +946,37 @@ html, body {
   touch-action: none;
 }
 
-/* ================= FEEDBACK MODAL (STEP-BY-STEP EXPLANATION) ================= */
+/* ================= SUDUT TAHUKAH ANDA (DID YOU KNOW) ================= */
+.fact-hero-card {
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
+  border: 3px solid #fde047;
+  border-radius: 28px;
+  padding: 28px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.5);
+  margin-bottom: 24px;
+}
+
+.fact-body-text {
+  font-size: 1.2rem;
+  line-height: 1.65;
+  color: #f8fafc;
+  white-space: pre-line;
+  margin: 14px 0 20px;
+}
+
+.fact-body-text strong {
+  color: #fde047;
+}
+
+.fact-quiz-box {
+  background: rgba(15, 23, 42, 0.78);
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  border-radius: 20px;
+  padding: 18px;
+  margin-top: 16px;
+}
+
+/* ================= FEEDBACK MODAL ================= */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -880,7 +1025,6 @@ html, body {
   border-left: 5px solid #facc15;
 }
 
-/* Parent Report Table */
 .report-table {
   width: 100%;
   border-collapse: collapse;
