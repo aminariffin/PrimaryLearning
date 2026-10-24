@@ -1,4 +1,4 @@
-const CACHE_NAME = 'primary-learning-kssr-v3';
+const CACHE_NAME = 'primary-learning-kssr-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const ASSETS = [
   './js/science_curriculum.js',
   './js/iqra_curriculum.js',
   './js/facts.js',
+  './js/kids_zone.js',
   './js/app.js'
 ];
 

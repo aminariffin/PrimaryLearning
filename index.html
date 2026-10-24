@@ -39,6 +39,9 @@
       <button class="nav-tab-btn" id="navDoa" onclick="showView('viewDoa')">
         🤲 Doa Harian
       </button>
+      <button class="nav-tab-btn" id="navKids" onclick="openKidsZone()">
+        🧸 Si Cilik (2–6 Thn)
+      </button>
       <button class="nav-tab-btn" id="navFacts" onclick="showView('viewFacts')">
         💡 Tahukah Anda?
       </button>
@@ -289,6 +292,13 @@
     <div id="doaListMount"></div>
   </section>
 
+  <!-- ================= SKRIN 4B: TAMAN SI CILIK (2-6 TAHUN — TANPA LOGIN & TANPA KUIZ) ================= -->
+  <section id="viewKids" class="view-section">
+    <div id="kidsThemeBanner" class="hero-banner" style="margin-bottom:16px;"></div>
+    <div id="kidsActivityTabs" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px;"></div>
+    <div id="kidsActivityMount"></div>
+  </section>
+
   <!-- ================= SKRIN 5: TAB "TAHUKAH ANDA?" (FAKTA MENARIK) ================= -->
   <section id="viewFacts" class="view-section">
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
@@ -351,6 +361,7 @@
   <script src="./js/science_curriculum.js"></script>
   <script src="./js/iqra_curriculum.js"></script>
   <script src="./js/facts.js"></script>
+  <script src="./js/kids_zone.js"></script>
   <script src="./js/app.js"></script>
 </body>
 </html>

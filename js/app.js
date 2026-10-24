@@ -227,6 +227,8 @@ window.showView = function (viewId) {
   } else if (viewId === 'viewDoa') {
     document.getElementById('navDoa')?.classList.add('active');
     renderDoaView();
+  } else if (viewId === 'viewKids') {
+    document.getElementById('navKids')?.classList.add('active');
   } else if (viewId === 'viewFacts') {
     document.getElementById('navFacts')?.classList.add('active');
     renderFactsView();
@@ -398,6 +400,23 @@ function renderProfilesView() {
             🔊 Dengar Bacaan & Hafal Doa
           </span>
           <button class="btn-3d gold" style="padding:9px 14px;">🤲 Buka Doa Harian</button>
+        </div>
+      </div>
+
+      <div class="subject-card kids-theme" onclick="openKidsZone()">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="subject-icon-big">🧸</span>
+            <span class="badge-chip" style="background:#facc15; color:#1e1b4b;">Umur 2 – 6 Tahun • Tanpa Login</span>
+          </div>
+          <h3>Taman Si Cilik (2–6 Tahun)</h3>
+          <p>Mewarna Gambar, Puzzle Bentuk, Surih ABC/123/ا ب, Pecah Belon & Bunyi Haiwan. Bertukar setiap hari!</p>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:8px;">
+          <span style="font-weight:800; color:#fef08a; font-size:0.88rem;">
+            🎨 Terus Main • Tiada Kuiz
+          </span>
+          <button class="btn-3d gold" style="padding:9px 14px;">🧸 Mula Aktiviti</button>
         </div>
       </div>
     `;
