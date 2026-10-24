@@ -1,5 +1,6 @@
 // ============================================================================
-// PRIMARYLEARNING MALAYSIA (MATEMATIK & SAINS KSSR DARJAH 1–6 + TAHUKAH ANDA)
+// PRIMARYLEARNING MALAYSIA
+// Matematik (1–6), Sains (1–6), Iqra' (1–6 + Audio & Rumi), Doa Harian & Tahukah Anda
 // ============================================================================
 
 const STORAGE_KEY = 'MATH_SAGA_KSSR_STATE_V1';
@@ -8,11 +9,12 @@ const AVATARS = ['🦁', '🐯', '🐼', '🦊', '🚀', '🦄', '🦖', '⚡', 
 let appState = {
   soundEnabled: true,
   activeProfileId: null,
-  activeSubject: 'math', // 'math' | 'science'
+  activeSubject: 'math', // 'math' | 'science' | 'iqra'
   selectedAvatar: '🦁',
   selectedDarjahView: 1,
   currentFactIndex: 0,
   selectedFactCategory: 'SEMUA',
+  selectedDoaCategory: 'SEMUA',
   profiles: []
 };
 
@@ -89,7 +91,6 @@ function loadState() {
     if (raw) {
       const parsed = JSON.parse(raw);
       appState = { ...appState, ...parsed };
-      // Pastikan setiap profil menyokong kedua-dua subjek (migrasi automatik)
       (appState.profiles || []).forEach((p) => {
         if (!p.progress) p.progress = {};
         if (!p.stats) p.stats = { totalAnswered: 0, totalCorrect: 0, topicStats: {} };
@@ -119,7 +120,9 @@ function getActiveProfile() {
 }
 
 function getWorldsForSubject(subject) {
-  return subject === 'science' ? window.SCIENCE_WORLDS : window.KSSR_WORLDS;
+  if (subject === 'science') return window.SCIENCE_WORLDS;
+  if (subject === 'iqra') return window.IQRA_WORLDS;
+  return window.KSSR_WORLDS;
 }
 
 function getAllNodesForSubject(subject) {
@@ -158,7 +161,7 @@ function getHighestUnlockedDarjah(profile, subject = appState.activeSubject) {
 
 function getSubjectStars(profile, subject) {
   if (!profile || !profile.progress) return 0;
-  const prefix = subject === 'science' ? 's' : 'd';
+  const prefix = subject === 'science' ? 's' : subject === 'iqra' ? 'i' : 'd';
   return Object.entries(profile.progress)
     .filter(([k]) => k.startsWith(prefix))
     .reduce((sum, [, r]) => sum + (r.stars || 0), 0);
@@ -182,7 +185,7 @@ function updateTopHud() {
 
   if (p) {
     profileBadge.innerHTML = `${p.avatar} <span>${escapeHtml(p.nickname)}</span>`;
-    starsBadge.textContent = `⭐ ${getTotalStars(p)} / 180`;
+    starsBadge.textContent = `⭐ ${getTotalStars(p)} / 270`;
   } else {
     profileBadge.innerHTML = `👤 Daftar Pelajar`;
     starsBadge.textContent = `⭐ 0`;
@@ -209,17 +212,21 @@ window.showView = function (viewId) {
   const target = document.getElementById(viewId);
   if (target) target.classList.add('active');
 
-  // Kemas kini butang tab aktif di bar atas
   document.querySelectorAll('.nav-tab-btn').forEach((btn) => btn.classList.remove('active'));
   if (viewId === 'viewProfiles') {
     document.getElementById('navHome')?.classList.add('active');
     renderProfilesView();
-  } else if (viewId === 'viewMap') {
+  } else if (viewId === 'viewMap' || viewId === 'viewIqraStudy') {
     if (appState.activeSubject === 'science') {
       document.getElementById('navScience')?.classList.add('active');
+    } else if (appState.activeSubject === 'iqra') {
+      document.getElementById('navIqra')?.classList.add('active');
     } else {
       document.getElementById('navMath')?.classList.add('active');
     }
+  } else if (viewId === 'viewDoa') {
+    document.getElementById('navDoa')?.classList.add('active');
+    renderDoaView();
   } else if (viewId === 'viewFacts') {
     document.getElementById('navFacts')?.classList.add('active');
     renderFactsView();
@@ -320,8 +327,10 @@ function renderProfilesView() {
   if (subjectMount) {
     const mathDarjah = p ? getHighestUnlockedDarjah(p, 'math') : 1;
     const sciDarjah = p ? getHighestUnlockedDarjah(p, 'science') : 1;
+    const iqraLevel = p ? getHighestUnlockedDarjah(p, 'iqra') : 1;
     const mathStars = p ? getSubjectStars(p, 'math') : 0;
     const sciStars = p ? getSubjectStars(p, 'science') : 0;
+    const iqraStars = p ? getSubjectStars(p, 'iqra') : 0;
 
     subjectMount.innerHTML = `
       <div class="subject-card math-theme" onclick="launchSubjectForStudent('${p ? p.id : ''}', 'math')">
@@ -334,10 +343,10 @@ function renderProfilesView() {
           <p>Nombor Bulat, Sifir, Pecahan, Perpuluhan, Peratus, Wang, Masa, Ruang & UASA.</p>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:8px;">
-          <span style="font-weight:800; color:#fde047; font-size:0.9rem;">
+          <span style="font-weight:800; color:#fde047; font-size:0.88rem;">
             ${p ? `🔓 Tahap ${escapeHtml(p.nickname)}: Darjah ${mathDarjah} • ⭐ ${mathStars}/90` : '6 Pulau • 30 Stesen Cabaran'}
           </span>
-          <button class="btn-3d gold" style="padding:9px 16px;">▶️ Main Matematik</button>
+          <button class="btn-3d gold" style="padding:9px 14px;">▶️ Main Matematik</button>
         </div>
       </div>
 
@@ -351,27 +360,44 @@ function renderProfilesView() {
           <p>Manusia, Haiwan, Tumbuhan, Cahaya, Elektrik, Daya, Kelajuan, Angkasa & UASA.</p>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:8px;">
-          <span style="font-weight:800; color:#a7f3d0; font-size:0.9rem;">
+          <span style="font-weight:800; color:#a7f3d0; font-size:0.88rem;">
             ${p ? `🔓 Tahap ${escapeHtml(p.nickname)}: Darjah ${sciDarjah} • ⭐ ${sciStars}/90` : '6 Pulau • 30 Stesen Cabaran'}
           </span>
-          <button class="btn-3d gold" style="padding:9px 16px;">▶️ Main Sains</button>
+          <button class="btn-3d gold" style="padding:9px 14px;">▶️ Main Sains</button>
         </div>
       </div>
 
-      <div class="subject-card facts-theme" onclick="showView('viewFacts')">
+      <div class="subject-card iqra-theme" onclick="launchSubjectForStudent('${p ? p.id : ''}', 'iqra')">
         <div>
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span class="subject-icon-big">💡</span>
-            <span class="badge-chip" style="background:rgba(255,255,255,0.2); color:#fff;">Bonus Kuiz & Fakta</span>
+            <span class="subject-icon-big">📖</span>
+            <span class="badge-chip" style="background:rgba(255,255,255,0.2); color:#fff;">Iqra' 1 – Iqra' 6 + Audio</span>
           </div>
-          <h3>Sudut "Tahukah Anda?"</h3>
-          <p>Terokai fakta menakjubkan dunia Sains, Alam Malaysia, Angkasa & Rahsia Matematik!</p>
+          <h3>Pembelajaran Iqra' (1–6)</h3>
+          <p>Kad Bacaan Arab + Sebutan Rumi di bawahnya, Audio Sebutan & Kuiz Pengukuhan Iqra' 1 hingga 6.</p>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:8px;">
-          <span style="font-weight:800; color:#fef08a; font-size:0.9rem;">
-            🎁 Jawab Kuiz Fakta Dapat Booster!
+          <span style="font-weight:800; color:#fde047; font-size:0.88rem;">
+            ${p ? `🔓 Tahap ${escapeHtml(p.nickname)}: Iqra' ${iqraLevel} • ⭐ ${iqraStars}/90` : 'Lengkap Audio & Sebutan Rumi'}
           </span>
-          <button class="btn-3d gold" style="padding:9px 16px;">📖 Terokai Fakta</button>
+          <button class="btn-3d gold" style="padding:9px 14px;">▶️ Belajar & Kuiz Iqra'</button>
+        </div>
+      </div>
+
+      <div class="subject-card doa-theme" onclick="showView('viewDoa')">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="subject-icon-big">🤲</span>
+            <span class="badge-chip" style="background:rgba(255,255,255,0.2); color:#fff;">12 Doa + Audio & Rumi</span>
+          </div>
+          <h3>Doa Harian Anak Soleh</h3>
+          <p>Doa Makan, Belajar, Ibu Bapa, Tidur, Kenderaan & Tandas lengkap Arab, Rumi, Maksud, Audio & Kuiz.</p>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:8px;">
+          <span style="font-weight:800; color:#fef08a; font-size:0.88rem;">
+            🔊 Dengar Bacaan & Hafal Doa
+          </span>
+          <button class="btn-3d gold" style="padding:9px 14px;">🤲 Buka Doa Harian</button>
         </div>
       </div>
     `;
@@ -386,7 +412,7 @@ function renderProfilesView() {
         <div style="font-size: 2.6rem;">👦👧</div>
         <h3>Belum Ada Pelajar Didaftarkan</h3>
         <p style="color:#cbd5e1; margin:4px 0 0;">
-          Sila daftarkan Nama Penuh & Nama Panggilan anak anda (contoh: Anak 10 Tahun - Darjah 4 & Anak 12 Tahun - Darjah 6) di borang bawah untuk mula memilih subjek <strong>Matematik</strong> atau <strong>Sains</strong>!
+          Sila daftarkan Nama Penuh & Nama Panggilan anak anda (contoh: Anak 10 Tahun - Darjah 4 & Anak 12 Tahun - Darjah 6) di borang bawah untuk mula memilih subjek <strong>Matematik</strong>, <strong>Sains</strong>, atau <strong>Iqra' 1–6</strong>!
         </p>
       </div>
     `;
@@ -398,8 +424,10 @@ function renderProfilesView() {
       const isSelected = p && p.id === prof.id;
       const mathDarjah = getHighestUnlockedDarjah(prof, 'math');
       const sciDarjah = getHighestUnlockedDarjah(prof, 'science');
+      const iqraDarjah = getHighestUnlockedDarjah(prof, 'iqra');
       const mathStars = getSubjectStars(prof, 'math');
       const sciStars = getSubjectStars(prof, 'science');
+      const iqraStars = getSubjectStars(prof, 'iqra');
 
       return `
         <div class="profile-card ${isSelected ? 'active-student' : ''}" onclick="setActiveStudent('${prof.id}')">
@@ -416,16 +444,20 @@ function renderProfilesView() {
 
           <div class="profile-badges">
             <span class="badge-chip">🎂 ${prof.age} Tahun (Darjah ${prof.actualDarjah})</span>
-            <span class="badge-chip" style="background:rgba(99,102,241,0.25);color:#c7d2fe;">🔢 Math: Darjah ${mathDarjah} (⭐${mathStars})</span>
-            <span class="badge-chip" style="background:rgba(16,185,129,0.25);color:#6ee7b7;">🔬 Sains: Darjah ${sciDarjah} (⭐${sciStars})</span>
+            <span class="badge-chip" style="background:rgba(99,102,241,0.25);color:#c7d2fe;">🔢 Math: D${mathDarjah} (⭐${mathStars})</span>
+            <span class="badge-chip" style="background:rgba(16,185,129,0.25);color:#6ee7b7;">🔬 Sains: D${sciDarjah} (⭐${sciStars})</span>
+            <span class="badge-chip" style="background:rgba(245,158,11,0.25);color:#fde047;">📖 Iqra': ${iqraDarjah} (⭐${iqraStars})</span>
           </div>
 
           <div style="display:flex; gap:8px; margin-top:auto; flex-wrap:wrap;">
-            <button class="btn-3d" style="flex:1; padding:10px 12px; font-size:0.9rem;" onclick="event.stopPropagation(); launchSubjectForStudent('${prof.id}', 'math')">
-              🔢 Matematik
+            <button class="btn-3d" style="flex:1; padding:10px 10px; font-size:0.86rem;" onclick="event.stopPropagation(); launchSubjectForStudent('${prof.id}', 'math')">
+              🔢 Math
             </button>
-            <button class="btn-3d green" style="flex:1; padding:10px 12px; font-size:0.9rem;" onclick="event.stopPropagation(); launchSubjectForStudent('${prof.id}', 'science')">
+            <button class="btn-3d green" style="flex:1; padding:10px 10px; font-size:0.86rem;" onclick="event.stopPropagation(); launchSubjectForStudent('${prof.id}', 'science')">
               🔬 Sains
+            </button>
+            <button class="btn-3d cyan" style="flex:1; padding:10px 10px; font-size:0.86rem;" onclick="event.stopPropagation(); launchSubjectForStudent('${prof.id}', 'iqra')">
+              📖 Iqra'
             </button>
             <button class="btn-3d slate" style="padding:10px 12px;" onclick="event.stopPropagation(); openParentReport('${prof.id}')" title="Rekod Prestasi">
               📊
@@ -483,7 +515,7 @@ window.handleRegisterChild = function (event) {
   playTone('win');
 };
 
-// ================= SKRIN 2: PETA SAGA (MATEMATIK ATAU SAINS) =================
+// ================= SKRIN 2: PETA SAGA (MATEMATIK, SAINS ATAU IQRA') =================
 window.selectDarjahTab = function (darjahNum) {
   appState.selectedDarjahView = darjahNum;
   renderSagaMap();
@@ -506,7 +538,9 @@ function renderSagaMap() {
   }
 
   const subj = appState.activeSubject;
-  const subjTitle = subj === 'science' ? '🔬 SAINS KSSR' : '🔢 MATEMATIK KSSR';
+  const subjTitle =
+    subj === 'science' ? '🔬 SAINS KSSR' : subj === 'iqra' ? "📖 PEMBELAJARAN IQRA' (1–6)" : '🔢 MATEMATIK KSSR';
+  const levelLabelPrefix = subj === 'iqra' ? "Iqra'" : 'Darjah';
   const worlds = getWorldsForSubject(subj);
   const highestDarjah = getHighestUnlockedDarjah(p, subj);
 
@@ -519,13 +553,12 @@ function renderSagaMap() {
           <span style="color:#94a3b8; font-weight:600; font-size:0.86rem;">(${escapeHtml(p.fullName)} • ${p.age} Tahun)</span>
         </div>
         <div style="font-size:0.86rem; color:#cbd5e1;">
-          Mula dari Darjah 1 • Lulus Ujian Boss (≥80%) untuk naik ke Darjah seterusnya! (Tahap Terbuka: <strong>Darjah ${highestDarjah}</strong>)
+          Mula dari ${levelLabelPrefix} 1 • Lulus Ujian Boss (≥80%) untuk naik ke tahap seterusnya! (Tahap Terbuka: <strong>${levelLabelPrefix} ${highestDarjah}</strong>)
         </div>
       </div>
     </div>
   `;
 
-  // Tab pulau Darjah 1 - Darjah 6
   const tabsEl = document.getElementById('darjahTabs');
   tabsEl.innerHTML = worlds
     .map((w) => {
@@ -537,7 +570,7 @@ function renderSagaMap() {
         <button class="darjah-tab ${isActive ? 'active' : ''} ${!firstNodeUnlocked ? 'locked' : ''}"
                 onclick="selectDarjahTab(${w.darjah})">
           <span>${firstNodeUnlocked ? w.badge : '🔒'}</span>
-          <span>Darjah ${w.darjah}</span>
+          <span>${levelLabelPrefix} ${w.darjah}</span>
           ${isCompleted ? '<span>✅</span>' : ''}
         </button>
       `;
@@ -570,9 +603,11 @@ function renderSagaMap() {
               ? '☆☆☆'
               : '🔒';
 
+            const hasStudyCards = subj === 'iqra' && node.cards && node.cards.length > 0;
+
             return `
               <div class="saga-step ${unlocked ? 'unlocked' : 'locked'} ${rec.passed ? 'completed' : ''} ${node.isBoss ? 'boss' : ''} ${isTarget ? 'current-target' : ''}"
-                   onclick="${unlocked ? `startLevel('${node.id}')` : `lockedNotice()`}">
+                   onclick="${unlocked ? (hasStudyCards ? `openIqraStudy('${node.id}')` : `startLevel('${node.id}')`) : `lockedNotice()`}">
                 <div class="node-orb">
                   <span>${node.isBoss ? '👑' : node.code}</span>
                   <div class="node-stars">${starsStr}</div>
@@ -595,9 +630,16 @@ function renderSagaMap() {
                       : ''
                   }
                 </div>
-                <div>
-                  <button class="btn-3d ${node.isBoss ? 'pink' : rec.passed ? 'green' : 'gold'}" ${!unlocked ? 'disabled' : ''}>
-                    ${rec.passed ? 'Ulang' : node.isBoss ? 'Ujian Boss!' : 'Main'}
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                  ${
+                    hasStudyCards
+                      ? `<button class="btn-3d cyan" style="padding:9px 14px; font-size:0.86rem;" ${!unlocked ? 'disabled' : ''} onclick="event.stopPropagation(); ${unlocked ? `openIqraStudy('${node.id}')` : 'lockedNotice()'}">
+                          📖 Belajar & Audio
+                         </button>`
+                      : ''
+                  }
+                  <button class="btn-3d ${node.isBoss ? 'pink' : rec.passed ? 'green' : 'gold'}" style="padding:9px 14px; font-size:0.86rem;" ${!unlocked ? 'disabled' : ''} onclick="event.stopPropagation(); ${unlocked ? `startLevel('${node.id}')` : 'lockedNotice()'}">
+                    ${rec.passed ? '🎮 Ulang Kuiz' : node.isBoss ? '👑 Ujian Boss!' : '🎮 Mula Kuiz'}
                   </button>
                 </div>
               </div>
@@ -613,16 +655,67 @@ function renderSagaMap() {
 
 window.lockedNotice = function () {
   playTone('wrong');
-  alert('Stesen ini masih terkunci! Sila lulus stesen sebelumnya (dan Ujian Boss Darjah) dahulu.');
+  alert('Stesen ini masih terkunci! Sila lulus stesen sebelumnya (dan Ujian Boss) dahulu.');
 };
 
-// ================= SKRIN 3: ARENA PERMAINAN =================
+// ================= SKRIN BELAJAR IQRA' (KAD ARAB + SEBUTAN RUMI + AUDIO) =================
+window.openIqraStudy = function (nodeId) {
+  const world = window.IQRA_WORLDS.find((w) => w.nodes.some((n) => n.id === nodeId));
+  const node = world ? world.nodes.find((n) => n.id === nodeId) : null;
+  if (!node) return;
+
+  document.getElementById('iqraStudyHeader').innerHTML = `
+    <div>
+      <span class="badge-chip" style="background:rgba(250,204,21,0.22); color:#fde047;">${escapeHtml(world.title)}</span>
+      <h2 style="margin:6px 0 4px;">📖 ${escapeHtml(node.code)} — ${escapeHtml(node.title)}</h2>
+      <p style="margin:0; color:#cbd5e1; font-size:0.92rem;">
+        Tekan butang <strong>🔊 Bunyi Arab</strong> atau <strong>🗣️ Sebutan Rumi</strong> pada setiap kad untuk mendengar cara bacaan yang betul sebelum memulakan Kuiz!
+      </p>
+    </div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <button class="btn-3d gold" onclick="startLevel('${node.id}')">🎮 Terus Ke Kuiz Stesen Ini</button>
+      <button class="btn-3d slate" onclick="showView('viewMap')">⬅️ Kembali ke Peta Iqra'</button>
+    </div>
+  `;
+
+  const cards = node.cards || [];
+  document.getElementById('iqraCardsMount').innerHTML = cards
+    .map(
+      (c, idx) => `
+      <div class="iqra-flashcard">
+        <div>
+          <div style="font-size:0.78rem; color:#94a3b8; font-weight:700;">KAD BACAAN #${idx + 1}</div>
+          <div class="arabic-script">${escapeHtml(c.arabic)}</div>
+          <div class="rumi-translit">${escapeHtml(c.rumi)}</div>
+        </div>
+        <div class="iqra-note">💡 ${escapeHtml(c.note)}</div>
+        <div style="display:flex; gap:8px; margin-top:6px;">
+          <button class="btn-3d gold" style="flex:1; padding:9px 10px; font-size:0.84rem;"
+                  onclick="speakIqraCard('${escapeHtml(c.arabic).replace(/'/g, "\\'")}', '${escapeHtml(c.ttsRumi || c.rumi).replace(/'/g, "\\'")}', 'both')">
+            🔊 Dengar Bacaan
+          </button>
+          <button class="btn-3d cyan" style="padding:9px 12px; font-size:0.84rem;"
+                  onclick="speakIqraCard('${escapeHtml(c.arabic).replace(/'/g, "\\'")}', '${escapeHtml(c.ttsRumi || c.rumi).replace(/'/g, "\\'")}', 'rumi')"
+                  title="Dengar Sebutan Rumi">
+            🗣️ Rumi
+          </button>
+        </div>
+      </div>
+    `
+    )
+    .join('');
+
+  showView('viewIqraStudy');
+};
+
+// ================= SKRIN 3: ARENA KUIZ / PERMAINAN =================
 window.startLevel = function (nodeId) {
   const p = getActiveProfile();
   if (!p) return;
 
   const isSci = nodeId.startsWith('s');
-  const subj = isSci ? 'science' : 'math';
+  const isIqra = nodeId.startsWith('i');
+  const subj = isSci ? 'science' : isIqra ? 'iqra' : 'math';
   appState.activeSubject = subj;
 
   const worlds = getWorldsForSubject(subj);
@@ -631,6 +724,8 @@ window.startLevel = function (nodeId) {
 
   const questions = isSci
     ? window.generateScienceQuestionsForNode(nodeId)
+    : isIqra
+    ? window.generateIqraQuestionsForNode(nodeId)
     : window.generateQuestionsForNode(nodeId);
 
   gameSession = {
@@ -652,6 +747,14 @@ window.startLevel = function (nodeId) {
   showView('viewArena');
   initScratchpad();
   renderCurrentQuestion();
+};
+
+window.playCurrentQuizAudio = function () {
+  const q = gameSession.questions[gameSession.currentIndex];
+  if (!q) return;
+  if (q.ttsArabic || q.ttsRumi) {
+    window.speakIqraCard(q.ttsArabic || '', q.ttsRumi || '', 'both');
+  }
 };
 
 function renderCurrentQuestion() {
@@ -689,11 +792,22 @@ function renderCurrentQuestion() {
   document.getElementById('btnBoosterShield').disabled = p.boosters.shield <= 0 || gameSession.shieldActive;
 
   document.getElementById('qTopicPill').textContent = q.topic;
-  document.getElementById('qPromptText').innerHTML = formatPromptHtml(q.prompt);
+
+  // Jika soalan Iqra, paparkan butang Dengar Audio Sebutan
+  const audioBtnHtml =
+    q.ttsArabic || q.ttsRumi
+      ? `<div style="margin-top:12px;">
+           <button type="button" class="btn-3d gold" style="padding:8px 16px; font-size:0.9rem;" onclick="playCurrentQuizAudio()">
+             🔊 Dengar Bunyi Sebutan
+           </button>
+         </div>`
+      : '';
+
+  document.getElementById('qPromptText').innerHTML = formatPromptHtml(q.prompt) + audioBtnHtml;
 
   const hintBox = document.getElementById('qHintBox');
   hintBox.style.display = 'none';
-  hintBox.textContent = `💡 Petunjuk Cikgu: ${q.hint}`;
+  hintBox.textContent = `💡 Petunjuk Cikgu/Ustaz: ${q.hint}`;
 
   const mcqArea = document.getElementById('mcqMount');
   const numpadArea = document.getElementById('numpadMount');
@@ -709,7 +823,7 @@ function renderCurrentQuestion() {
     mcqArea.innerHTML = q.options
       .map(
         (opt, idx) => `
-        <button class="mcq-btn" id="mcqOpt_${idx}" onclick="submitAnswer(${idx}, true)">
+        <button class="mcq-btn" id="mcqOpt_${idx}" onclick="submitAnswer(${idx}, true)" style="${gameSession.subject === 'iqra' ? 'font-size:1.35rem;' : ''}">
           ${escapeHtml(opt)}
         </button>
       `
@@ -763,7 +877,7 @@ window.useBoosterBomb = function () {
   const p = getActiveProfile();
   const q = gameSession.questions[gameSession.currentIndex];
   if (p.boosters.bomb <= 0) {
-    alert('Bom 50/50 sudah habis! Dapatkan 3 Bintang atau jawab Kuiz di tab "Tahukah Anda?" untuk dapatkan Booster baharu.');
+    alert('Bom 50/50 sudah habis! Dapatkan 3 Bintang atau jawab Kuiz di tab "Doa Harian" / "Tahukah Anda?" untuk dapatkan Booster baharu.');
     return;
   }
   p.boosters.bomb--;
@@ -832,7 +946,7 @@ window.submitAnswer = function (valOrIdx, isIndex = false) {
     let bonusMsg = '';
     if (gameSession.streak > 0 && gameSession.streak % 4 === 0) {
       p.boosters.hint++;
-      bonusMsg = `\n\n🎁 BONUS COMBO x${gameSession.streak}: Anda dapat +1 Petunjuk Cikgu (💡)!`;
+      bonusMsg = `\n\n🎁 BONUS COMBO x${gameSession.streak}: Anda dapat +1 Petunjuk (💡)!`;
     }
 
     box.className = 'modal-box correct';
@@ -853,7 +967,7 @@ window.submitAnswer = function (valOrIdx, isIndex = false) {
       title.innerHTML = `❌ Kurang Tepat! (-1 Hati ❤️)`;
     }
 
-    exp.innerHTML = `Jawapan anda: <strong>${escapeHtml(givenRaw)}</strong>\nJawapan sebenar: <strong>${escapeHtml(q.answer)}</strong>\n\n<strong>📚 Penerangan Cikgu:</strong>\n${formatPromptHtml(q.explanation)}`;
+    exp.innerHTML = `Jawapan anda: <strong>${escapeHtml(givenRaw)}</strong>\nJawapan sebenar: <strong>${escapeHtml(q.answer)}</strong>\n\n<strong>📚 Penerangan:</strong>\n${formatPromptHtml(q.explanation)}`;
   }
 
   saveState();
@@ -915,6 +1029,7 @@ function finishLevel(passed, reasonText) {
 
   const resModal = document.getElementById('resultModal');
   const resBox = document.getElementById('resultBox');
+  const unitName = gameSession.subject === 'iqra' ? "IQRA'" : 'DARJAH';
 
   if (passed) {
     playTone('win');
@@ -925,7 +1040,7 @@ function finishLevel(passed, reasonText) {
     document.getElementById('resultHeader').innerHTML = `
       <div style="font-size:3rem; margin-bottom:6px;">${starsVisual}</div>
       <h2 style="margin:0; color:#6ee7b7;">
-        ${gameSession.node.isBoss ? `🏆 LULUS UJIAN BOSS DARJAH ${gameSession.world.darjah}!` : `🎉 TAHNIAH, STESEN LULUS!`}
+        ${gameSession.node.isBoss ? `🏆 LULUS UJIAN BOSS ${unitName} ${gameSession.world.darjah}!` : `🎉 TAHNIAH, STESEN LULUS!`}
       </h2>
     `;
 
@@ -937,7 +1052,7 @@ function finishLevel(passed, reasonText) {
       ${
         unlockedNextDarjah
           ? `<div style="background:rgba(16,185,129,0.2); border:2px solid #10b981; padding:12px; border-radius:14px; margin-top:12px; font-weight:800; color:#a7f3d0;">
-              🔓 KUNCI PULAU DARJAH ${gameSession.world.darjah + 1} TELAH DIBUKA!
+              🔓 KUNCI ${unitName} ${gameSession.world.darjah + 1} TELAH DIBUKA!
              </div>`
           : ''
       }
@@ -990,7 +1105,134 @@ window.returnToMapFromModal = function () {
   showView('viewMap');
 };
 
-// ================= SKRIN 4: SUDUT "TAHUKAH ANDA?" (FAKTA RAWAK & KUIZ BONUS) =================
+// ================= SKRIN DOA HARIAN ANAK SOLEH =================
+window.selectDoaCategory = function (cat) {
+  appState.selectedDoaCategory = cat;
+  renderDoaView();
+};
+
+window.answerDoaQuiz = function (doaId, optIdx) {
+  const doa = (window.DAILY_DOA_LIST || []).find((d) => d.id === doaId);
+  if (!doa) return;
+  const chosen = doa.quizOpts[optIdx];
+  const fb = document.getElementById(`doaFb_${doaId}`);
+  const p = getActiveProfile();
+
+  if (chosen === doa.quizAns) {
+    playTone('win');
+    let msg = '✅ Alhamdulillah, jawapan anda tepat!';
+    if (p) {
+      if (!p.claimedFacts) p.claimedFacts = [];
+      if (!p.claimedFacts.includes(doaId)) {
+        p.claimedFacts.push(doaId);
+        p.boosters.hint = (p.boosters.hint || 0) + 1;
+        saveState();
+        msg = `🎉 Betul! ${escapeHtml(p.nickname)} mendapat ganjaran +1 💡 Petunjuk Cikgu!`;
+      }
+    }
+    fb.style.display = 'block';
+    fb.style.color = '#6ee7b7';
+    fb.textContent = msg;
+  } else {
+    playTone('wrong');
+    fb.style.display = 'block';
+    fb.style.color = '#fca5a5';
+    fb.textContent = '❌ Cuba semak semula maksud doa di atas dan pilih jawapan yang betul!';
+  }
+};
+
+function renderDoaView() {
+  const all = window.DAILY_DOA_LIST || [];
+  const cats = ['SEMUA', ...new Set(all.map((d) => d.category))];
+  const catBar = document.getElementById('doaCategoriesBar');
+  if (catBar) {
+    catBar.innerHTML = cats
+      .map(
+        (c) => `
+        <button class="darjah-tab ${appState.selectedDoaCategory === c ? 'active' : ''}"
+                onclick="selectDoaCategory('${escapeHtml(c).replace(/'/g, "\\'")}')">
+          ${escapeHtml(c)}
+        </button>
+      `
+      )
+      .join('');
+  }
+
+  const filtered =
+    appState.selectedDoaCategory === 'SEMUA'
+      ? all
+      : all.filter((d) => d.category === appState.selectedDoaCategory);
+
+  const p = getActiveProfile();
+  const mount = document.getElementById('doaListMount');
+  if (!mount) return;
+
+  mount.innerHTML = filtered
+    .map((doa) => {
+      const claimed = p && p.claimedFacts && p.claimedFacts.includes(doa.id);
+      return `
+        <div class="doa-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <span style="font-size:2.4rem;">${doa.icon}</span>
+              <div>
+                <span class="badge-chip" style="background:rgba(250,204,21,0.2); color:#fde047;">${escapeHtml(doa.category)}</span>
+                <h2 style="margin:4px 0 0; font-size:1.35rem;">${escapeHtml(doa.title)}</h2>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn-3d gold" style="padding:9px 14px; font-size:0.86rem;"
+                      onclick="speakIqraCard('${escapeHtml(doa.arabic).replace(/'/g, "\\'")}', '${escapeHtml(doa.rumi).replace(/'/g, "\\'")}', 'arabic')">
+                🔊 Bacaan Arab
+              </button>
+              <button class="btn-3d cyan" style="padding:9px 14px; font-size:0.86rem;"
+                      onclick="speakText('${escapeHtml(doa.rumi).replace(/'/g, "\\'")}', 'ms-MY', 0.85)">
+                🗣️ Sebutan Rumi
+              </button>
+              <button class="btn-3d green" style="padding:9px 14px; font-size:0.86rem;"
+                      onclick="speakText('${escapeHtml(doa.meaning).replace(/'/g, "\\'")}', 'ms-MY', 0.9)">
+                📖 Dengar Maksud
+              </button>
+            </div>
+          </div>
+
+          <div class="doa-arabic-box">
+            <div class="doa-arabic-text">${escapeHtml(doa.arabic)}</div>
+            <div class="doa-rumi-text">Sebutan Rumi: "${escapeHtml(doa.rumi)}"</div>
+          </div>
+
+          <div class="doa-meaning-text">
+            <strong>🌟 Maksudnya:</strong> "${escapeHtml(doa.meaning)}"
+          </div>
+
+          <div class="fact-quiz-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+              <strong style="color:#a5b4fc;">🧠 Uji Kefahaman Doa Ini:</strong>
+              <span class="badge-chip" style="background:rgba(16,185,129,0.2); color:#6ee7b7;">
+                ${claimed ? '✅ Bonus Telah Ditebus' : '🎁 Ganjaran: +1 💡 Petunjuk'}
+              </span>
+            </div>
+            <div style="font-weight:700; margin-bottom:10px;">${escapeHtml(doa.quizQ)}</div>
+            <div class="mcq-grid">
+              ${doa.quizOpts
+                .map(
+                  (opt, idx) => `
+                  <button class="mcq-btn" style="font-size:0.95rem; padding:12px;" onclick="answerDoaQuiz('${doa.id}', ${idx})">
+                    ${escapeHtml(opt)}
+                  </button>
+                `
+                )
+                .join('')}
+            </div>
+            <div id="doaFb_${doa.id}" style="display:none; margin-top:10px; font-weight:800;"></div>
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+}
+
+// ================= SKRIN SUDUT "TAHUKAH ANDA?" =================
 function getFilteredFacts() {
   const all = window.DID_YOU_KNOW_FACTS || [];
   if (appState.selectedFactCategory === 'SEMUA') return all;
@@ -1169,7 +1411,7 @@ window.clearScratchpad = function () {
   scratchCtx.clearRect(0, 0, canvas.width, canvas.height);
 };
 
-// ================= SKRIN 5: LAPORAN IBU BAPA =================
+// ================= LAPORAN IBU BAPA =================
 window.openParentReport = function (profileId) {
   if (profileId) appState.activeProfileId = profileId;
   const p = getActiveProfile() || appState.profiles[0];
@@ -1184,8 +1426,10 @@ window.openParentReport = function (profileId) {
 
   const mathDarjah = getHighestUnlockedDarjah(p, 'math');
   const sciDarjah = getHighestUnlockedDarjah(p, 'science');
+  const iqraDarjah = getHighestUnlockedDarjah(p, 'iqra');
   const mathStars = getSubjectStars(p, 'math');
   const sciStars = getSubjectStars(p, 'science');
+  const iqraStars = getSubjectStars(p, 'iqra');
 
   const topics = Object.entries(p.stats.topicStats || {});
   const topicRows =
@@ -1217,11 +1461,14 @@ window.openParentReport = function (profileId) {
           </div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <span class="badge-chip" style="font-size:0.9rem; padding:8px 14px;">
-            🔢 Matematik: Darjah ${mathDarjah} (⭐ ${mathStars}/90)
+          <span class="badge-chip" style="font-size:0.88rem; padding:7px 12px;">
+            🔢 Matematik: D${mathDarjah} (⭐ ${mathStars}/90)
           </span>
-          <span class="badge-chip" style="font-size:0.9rem; padding:8px 14px; background:rgba(16,185,129,0.2); color:#6ee7b7;">
-            🔬 Sains: Darjah ${sciDarjah} (⭐ ${sciStars}/90)
+          <span class="badge-chip" style="font-size:0.88rem; padding:7px 12px; background:rgba(16,185,129,0.2); color:#6ee7b7;">
+            🔬 Sains: D${sciDarjah} (⭐ ${sciStars}/90)
+          </span>
+          <span class="badge-chip" style="font-size:0.88rem; padding:7px 12px; background:rgba(245,158,11,0.2); color:#fde047;">
+            📖 Iqra': Iqra ${iqraDarjah} (⭐ ${iqraStars}/90)
           </span>
         </div>
       </div>
@@ -1236,19 +1483,19 @@ window.openParentReport = function (profileId) {
           <div style="font-size:1.5rem; font-weight:900; color:#fde047;">${acc}%</div>
         </div>
         <div style="background:#0f172a; padding:14px; border-radius:14px;">
-          <div style="color:#94a3b8; font-size:0.82rem;">Jumlah Stesen Lulus (Math + Sains)</div>
+          <div style="color:#94a3b8; font-size:0.82rem;">Jumlah Stesen Lulus (Semua Subjek)</div>
           <div style="font-size:1.5rem; font-weight:900; color:#34d399;">
-            ${Object.values(p.progress || {}).filter((x) => x.passed).length} / 60
+            ${Object.values(p.progress || {}).filter((x) => x.passed).length} / 90
           </div>
         </div>
       </div>
 
-      <h3 style="margin:18px 0 6px;">Analisis Mengikut Topik KSSR (Matematik & Sains)</h3>
+      <h3 style="margin:18px 0 6px;">Analisis Mengikut Topik (Matematik, Sains & Iqra')</h3>
       <div style="overflow-x:auto;">
         <table class="report-table">
           <thead>
             <tr>
-              <th>Topik KSSR</th>
+              <th>Topik</th>
               <th>Betul / Jumlah</th>
               <th>Peratus</th>
               <th>Tahap Penguasaan</th>

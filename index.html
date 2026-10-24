@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#4f46e5" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <title>PrimaryLearning KSSR — Matematik, Sains (Darjah 1–6) & Tahukah Anda?</title>
+  <title>PrimaryLearning — Matematik, Sains, Iqra' (1–6), Doa Harian & Tahukah Anda?</title>
   <link rel="manifest" href="./manifest.json" />
   <link rel="icon" type="image/svg+xml" href="./assets/icon.svg" />
   <link rel="stylesheet" href="./assets/styles.css" />
@@ -19,7 +19,7 @@
       <div class="brand-logo">🎓</div>
       <div>
         <div class="brand-title">PRIMARY LEARNING KSSR</div>
-        <div class="brand-sub">Matematik & Sains Sekolah Rendah (Darjah 1 – 6)</div>
+        <div class="brand-sub">Matematik • Sains • Iqra' (1–6) • Doa Harian</div>
       </div>
     </div>
 
@@ -28,10 +28,16 @@
         🏠 Muka Depan
       </button>
       <button class="nav-tab-btn" id="navMath" onclick="openSubjectFromNav('math')">
-        🔢 Matematik (1–6)
+        🔢 Matematik
       </button>
       <button class="nav-tab-btn" id="navScience" onclick="openSubjectFromNav('science')">
-        🔬 Sains (1–6)
+        🔬 Sains
+      </button>
+      <button class="nav-tab-btn" id="navIqra" onclick="openSubjectFromNav('iqra')">
+        📖 Iqra' (1–6)
+      </button>
+      <button class="nav-tab-btn" id="navDoa" onclick="showView('viewDoa')">
+        🤲 Doa Harian
       </button>
       <button class="nav-tab-btn" id="navFacts" onclick="showView('viewFacts')">
         💡 Tahukah Anda?
@@ -45,7 +51,7 @@
       <div class="hud-pill clickable" id="hudProfileName" onclick="showView('viewProfiles')" title="Tukar Pelajar">
         👤 Daftar Pelajar
       </div>
-      <div class="hud-pill" id="hudStars">⭐ 0 / 180</div>
+      <div class="hud-pill" id="hudStars">⭐ 0 / 270</div>
       <div class="hud-pill clickable" id="hudSound" onclick="toggleSound()" title="Bunyi ON/OFF">🔊</div>
     </div>
   </header>
@@ -54,9 +60,9 @@
   <section id="viewProfiles" class="view-section active">
     <div class="hero-banner">
       <div style="flex:1; min-width:260px;">
-        <h1>🏰 Portal Pengembaraan KSSR Malaysia (Darjah 1 – 6)</h1>
+        <h1>🏰 Portal Pengembaraan Pintar Anak Soleh (Darjah 1 – 6)</h1>
         <p>
-          Daftar profil anak di muka depan, pilih subjek <strong>Matematik</strong> atau <strong>Sains</strong>, dan mulakan cabaran dari <strong>Darjah 1 hingga Darjah 6</strong>! Lulus <strong>Ujian Boss (≥80%)</strong> untuk membuka kunci Darjah seterusnya.
+          Daftar profil anak di muka depan, pilih subjek <strong>Matematik KSSR</strong>, <strong>Sains KSSR</strong>, <strong>Iqra' (1–6 dengan Audio & Rumi)</strong>, atau <strong>Doa Harian</strong>! Lulus <strong>Ujian Boss (≥80%)</strong> untuk naik ke tahap seterusnya.
         </p>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -71,7 +77,7 @@
     <!-- Bahagian A: Pilihan Subjek Utama -->
     <div style="margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
       <h2 style="margin:0; font-size:1.3rem;">📚 Pilih Subjek Pembelajaran</h2>
-      <span style="font-size:0.86rem; color:#fde047;">Klik kad subjek di bawah untuk mula bermain!</span>
+      <span style="font-size:0.86rem; color:#fde047;">Klik kad subjek di bawah untuk mula belajar & bermain!</span>
     </div>
     <div id="frontSubjectCards" class="subject-grid"></div>
 
@@ -88,7 +94,7 @@
     <div class="register-box">
       <h3 style="margin:0 0 6px; font-size:1.22rem; color:#fde047;">➕ Pendaftaran Pelajar Baharu</h3>
       <p style="margin:0; font-size:0.88rem; color:#cbd5e1;">
-        Daftarkan Nama Penuh & Nama Panggilan anak. Setiap pelajar mempunyai rekod bintang dan kemajuan peta tersendiri bagi subjek Matematik dan Sains.
+        Daftarkan Nama Penuh & Nama Panggilan anak. Setiap pelajar mempunyai rekod bintang tersendiri bagi Matematik, Sains dan Iqra' (1–6).
       </p>
 
       <form onsubmit="handleRegisterChild(event)">
@@ -139,23 +145,30 @@
     </div>
   </section>
 
-  <!-- ================= SKRIN 2: PETA SAGA (MATEMATIK ATAU SAINS) ================= -->
+  <!-- ================= SKRIN 2: PETA SAGA (MATEMATIK, SAINS ATAU IQRA') ================= -->
   <section id="viewMap" class="view-section">
     <div class="map-header-bar">
       <div id="mapPlayerSummary"></div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <button class="btn-3d" onclick="switchSubjectInMap('math')">🔢 Peta Matematik</button>
-        <button class="btn-3d green" onclick="switchSubjectInMap('science')">🔬 Peta Sains</button>
-        <button class="btn-3d pink" onclick="showView('viewFacts')">💡 Tahukah Anda?</button>
+        <button class="btn-3d" onclick="switchSubjectInMap('math')">🔢 Matematik</button>
+        <button class="btn-3d green" onclick="switchSubjectInMap('science')">🔬 Sains</button>
+        <button class="btn-3d cyan" onclick="switchSubjectInMap('iqra')">📖 Iqra' (1–6)</button>
+        <button class="btn-3d pink" onclick="showView('viewDoa')">🤲 Doa Harian</button>
         <button class="btn-3d slate" onclick="showView('viewProfiles')">🏠 Muka Depan</button>
       </div>
     </div>
 
-    <!-- Tab Pulau Darjah 1 hingga Darjah 6 -->
+    <!-- Tab Pulau Darjah/Iqra 1 hingga 6 -->
     <div id="darjahTabs" class="darjah-tabs"></div>
 
     <!-- Peta Berliku (Winding Path) -->
     <div id="worldMapMount"></div>
+  </section>
+
+  <!-- ================= SKRIN 2B: KAD BELAJAR IQRA' (ARAB + RUMI + AUDIO) ================= -->
+  <section id="viewIqraStudy" class="view-section">
+    <div id="iqraStudyHeader" class="map-header-bar"></div>
+    <div id="iqraCardsMount" class="iqra-cards-grid"></div>
   </section>
 
   <!-- ================= SKRIN 3: ARENA SOALAN & KERTAS CONTENG ================= -->
@@ -199,7 +212,7 @@
       <!-- Lajur Kiri: Kad Soalan + Input Jawapan -->
       <div class="question-card">
         <div>
-          <span id="qTopicPill" class="q-topic-pill">Topik KSSR</span>
+          <span id="qTopicPill" class="q-topic-pill">Topik</span>
           <div id="qPromptText" class="q-prompt" style="margin-top:14px;">Soalan sedang dimuatkan...</div>
           <div id="qHintBox" class="hint-box" style="margin-top:12px;"></div>
         </div>
@@ -236,10 +249,10 @@
         </div>
       </div>
 
-      <!-- Lajur Kanan: Kertas Conteng (Bentuk Lazim / Lakaran Sains) untuk Tab Android -->
+      <!-- Lajur Kanan: Kertas Conteng untuk Tab Android -->
       <div class="scratchpad-card">
         <div class="scratchpad-header">
-          <span>✏️ Kertas Conteng (Kira / Lakar Nota)</span>
+          <span>✏️ Kertas Conteng (Kira / Lakar Huruf)</span>
           <div style="display:flex; gap:6px; align-items:center;">
             <button class="btn-3d gold" style="padding:5px 10px; font-size:0.75rem;" onclick="setPenColor('#fde047')">Kuning</button>
             <button class="btn-3d green" style="padding:5px 10px; font-size:0.75rem;" onclick="setPenColor('#34d399')">Hijau</button>
@@ -251,13 +264,32 @@
           <canvas id="scratchCanvas"></canvas>
         </div>
         <div style="font-size:0.78rem; color:#94a3b8; text-align:center;">
-          Gunakan jari atau <em>stylus</em> pada skrin Tab Android untuk mengira bentuk lazim atau melakar jawapan.
+          Gunakan jari atau <em>stylus</em> pada skrin Tab Android untuk mengira bentuk lazim atau berlatih menulis huruf hijaiyah.
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ================= SKRIN 4: TAB "TAHUKAH ANDA?" (FAKTA MENARIK) ================= -->
+  <!-- ================= SKRIN 4: TAB DOA HARIAN ANAK SOLEH ================= -->
+  <section id="viewDoa" class="view-section">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+      <div>
+        <h1 style="margin:0; font-size:1.6rem;">🤲 Koleksi Doa Harian Anak Soleh</h1>
+        <p style="margin:4px 0 0; color:#cbd5e1; font-size:0.94rem;">
+          Lengkap dengan <strong>Tulisan Arab</strong>, <strong>Sebutan Rumi di bawahnya</strong>, <strong>Maksud Bahasa Melayu</strong>, <strong>Audio Bacaan</strong>, serta <strong>Kuiz Kefahaman Doa</strong>!
+        </p>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn-3d cyan" onclick="openSubjectFromNav('iqra')">📖 Ke Peta Iqra' (1–6)</button>
+        <button class="btn-3d slate" onclick="showView('viewProfiles')">🏠 Muka Depan</button>
+      </div>
+    </div>
+
+    <div id="doaCategoriesBar" class="darjah-tabs"></div>
+    <div id="doaListMount"></div>
+  </section>
+
+  <!-- ================= SKRIN 5: TAB "TAHUKAH ANDA?" (FAKTA MENARIK) ================= -->
   <section id="viewFacts" class="view-section">
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
       <div>
@@ -276,10 +308,10 @@
     <div id="factMainMount"></div>
   </section>
 
-  <!-- ================= SKRIN 5: LAPORAN IBU BAPA ================= -->
+  <!-- ================= SKRIN 6: LAPORAN IBU BAPA ================= -->
   <section id="viewParent" class="view-section">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
-      <h2 style="margin:0;">📊 Rekod & Analisis Prestasi Anak (Matematik & Sains)</h2>
+      <h2 style="margin:0;">📊 Rekod & Analisis Prestasi Anak (Matematik, Sains & Iqra')</h2>
       <div style="display:flex; gap:8px;">
         <button class="btn-3d gold" onclick="showView('viewProfiles')">🏠 Muka Depan</button>
         <button class="btn-3d green" onclick="showView('viewMap')">🗺️ Ke Peta Saga</button>
@@ -317,6 +349,7 @@
 
   <script src="./js/curriculum.js"></script>
   <script src="./js/science_curriculum.js"></script>
+  <script src="./js/iqra_curriculum.js"></script>
   <script src="./js/facts.js"></script>
   <script src="./js/app.js"></script>
 </body>
